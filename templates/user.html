@@ -1,0 +1,242 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>个人中心</title>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="stylesheet" href="{% static '/css/layui.css' %}"  media="all">
+    <link rel="stylesheet" href={% static  "/css/marmo.css" %}  media="all"/>
+</head>
+<body>
+<button type="button" class="layui-btn" id="undone_thing">待办事项</button>
+<table class="layui-hide" id="user" lay-filter="user"></table>
+<script type="text/html" id="barDemo">
+  <a class="layui-btn layui-btn-xs" lay-event="edit_detail">详情&修改</a>
+</script>
+
+<script src="{% static '/js/layui.js' %}" charset="utf-8"></script>
+<script type="text/html" id="toolbarDemo">
+    <div class="layui-btn-container"></div>
+</script>
+<script>
+
+
+layui.use(['table','form'], function(){
+  var table = layui.table;
+  var $ = layui.jquery;
+  var form =layui.form;
+  var process_info_id ="";
+  table.render({
+    elem: '#user'
+    ,url:'/user/?type=json&user_id={{ request.session.user_id }}'
+    ,defaultToolbar: ['filter','exports','print'],
+      toolbar: '#toolbarDemo'
+    ,cols: [[
+      {field:'id', width:150, title: 'ID', sort: true}
+      ,{field:'asset', width:250, title: '关联资产'}
+      ,{field:'create_time', width:250, title: '创建时间', sort: true}
+      ,{field:'create_user', width:250, title: '创建人'}
+      ,{field:'info_content', title: '渗透信息', width: 450}
+      ,{field:'info_level', width:120, title: '渗透重要性', sort: true}
+      ,{field:'step', width:250, title: '流转记录', }
+      ,{field:'info_status', width:150, title: '信息状态'}
+      ,{field:'info_type', width:150, title: '信息类型',hide:true}
+      ,{field:'project_id', width:150, title: '绑定的项目',hide:true}
+      ,{field:'responser', width:150, title: '负责人',hide:true}
+      ,{field:'project_name', width:150, title: '关联项目',hide:true}
+      ,{fixed: 'right', title:'操作', toolbar: '#barDemo', width:350}
+    ]]
+    ,page: true
+    ,done:function(res,curr,count){
+        $("[data-field='info_level']").children().each(function(){
+            console.log($(this).text())
+            if ($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("低")
+            }else if($(this).text() =="2" || $(this).text() ==2){
+                $(this).text("中")
+            }else if ($(this).text() =="3" || $(this).text() ==3){
+                $(this).text("高")
+            }
+        });
+        $("[data-field='info_status']").children().each(function(){
+            if ($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("信息")
+            }else if($(this).text() =="2" || $(this).text() ==2){
+                $(this).text("待解决")
+            }else if ($(this).text() =="3" || $(this).text() ==3){
+                $(this).text("已解决")
+            }
+        });
+      }
+  });
+  //添加工具栏监听操作
+    table.on('tool(user)',function(obj){
+        var data = obj.data;
+        if (obj.event ==="edit_detail"){
+            var info_type = data.info_type;
+            var responser = data.responser;
+            var project_id=data.project_id;
+            var info_status=data.info_status;
+            var info_content =data.info_content;
+            process_info_id =data.id; //渗透任务id
+            var project_name = data.project_name;
+            //查找所有可以关联的用户，查找全部的项目
+            $.ajax({
+                type:"GET",
+                url:"project/?type=json",
+                success:function (data){
+                    if (data.code =="0"){
+                        var project_data = data.data
+                        var option_string =""
+                        for(var i=0;i<project_data.length;i++){
+                            var one_project =project_data[i];
+                            var one_project_id = one_project.id
+                            if (project_id ==one_project_id){
+                                option_string+='<option value="'+one_project_id+'" selected>'+one_project.name+'</option>'
+                            }else{
+                                option_string+='<option value="'+one_project_id+'">'+one_project.name+'</option>'
+                            }
+
+                        }
+                        $("#info_project").html(option_string)
+                        form.render();
+                    }
+                }
+            })
+            //获取所有的用户
+            $.ajax({
+                type:"GET",
+                url:"/user/?type=user&page=1",
+                success:function (data){
+                    if (data.code =="0"){
+                        var user_data = data.data
+                        var user_string =""
+                        for(var i=0;i<user_data.length;i++){
+                            var one_user =user_data[i];
+                            var one_user_id = one_user.id;
+                            if (responser ==one_user_id){
+                                user_string+='<option value="'+one_user_id+'" selected>'+one_user.name+'</option>'
+                            }else{
+                                user_string+='<option value="'+one_user_id+'">'+one_user.name+'</option>'
+                            }
+
+                        }
+                        $("#info_user").html(user_string)
+                        form.render();
+                    }
+                }
+            })
+            //项目状态
+            var info_status_string =''
+            var status_list=["信息","待解决","已解决"]
+
+            for(var i=1;i<=3;i++){
+                if (info_status ==i){
+                    info_status_string+='<option value="'+i+'" selected>'+status_list[i-1]
+                }else{
+                    info_status_string+='<option value="'+i+'" >'+status_list[i-1]
+                }
+            }
+            $("#info_project").val(project_name);
+            $("#info_project_id").val(data.project_id)
+            $("#info_status").html(info_status_string);
+            $("#pentest_info").html(info_content);
+            $("#user_alert").css("display","block");
+            form.render()
+        }
+    });
+    $("#project_confirm").click(function (){
+        //获取事件类型,关联人,关联项目,事件状态,渗透信息等的值
+        var info_type = $("#info_type").val();
+        var info_user =$("#info_user").val();
+        var info_project =$("#info_project_id").val();
+        var info_status=$("#info_status").val();
+        var info_content =$("#pentest_info").val();
+        $.ajax({
+            type:"POST",
+            url:"/user/",
+            data:{"info_type":info_type,"info_user":info_user,"info_project":info_project,"info_status":info_status,"info_content":info_content,"process_info_id":process_info_id},
+            dataType:"json",
+            traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            success:function(data){
+                if (data.code =="0"){
+                    alert("修改任务成功");
+                    $("#user_alert").css("display","none");
+                    window.location.reload();
+                }
+            }
+        })
+    });
+    $("#project_cancel").click(function (){
+        $("#user_alert").css("display","none");
+    })
+});
+function getCookie(name) {
+        var cookie = document.cookie.match("\\b" + name + "=([^;]*)\\b");
+        return cookie ? cookie[1] : undefined
+    }
+</script>
+
+<div class="marmo_alert" id="user_alert">
+    <div  class="marmo_container " >
+        <div class="layui-form-item">
+                    <label class="layui-form-label">事件类型</label>
+                    <div class="layui-input-block">
+                      <select name="info_type" lay-filter="aihao" id="info_type" class="sel_mask">
+                          <!-- 目前只有渗透信息可选-->
+                        <option value="1" selected>渗透信息</option>
+                      </select>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">关联人</label>
+                    <div class="layui-input-block">
+                      <select name="info_user" lay-filter="aihao" id="info_user" class="sel_mask">
+
+                      </select>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">关联项目</label>
+                    <div class="layui-input-block">
+                       <input type="text" name="info_project" lay-verify="title" autocomplete="off" placeholder="关联项目" class="layui-input" id="info_project">
+                    </div>
+                </div>
+                <div class="layui-form-item" style="display: none">
+                    <label class="layui-form-label">关联项目id</label>
+                    <div class="layui-input-block">
+                       <input type="text" name="info_project_id" lay-verify="title" autocomplete="off" placeholder="关联项目" class="layui-input" id="info_project_id">
+                    </div>
+                </div>
+            <div class="layui-form-item">
+                    <label class="layui-form-label">事件状态</label>
+                    <div class="layui-input-block">
+                      <select name="info_status" lay-filter="aihao" id="info_status" class="sel_mask">
+                      </select>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">渗透信息</label>
+                    <div class="layui-input-block">
+                        <textarea placeholder="渗透信息" class="layui-textarea" name="pentest_info" id="pentest_info"></textarea>
+                    </div>
+                </div>
+                  <div class="layui-form-item">
+                    <div class="layui-input-block">
+                      <button type="button" class="layui-btn layui-btn-normal" id="project_confirm">确认</button>
+                      <button type="button" class="layui-btn layui-btn-normal" id="project_cancel">取消</button>
+                    </div>
+                  </div>
+        </div>
+
+</div>
+
+</body>
+</html>

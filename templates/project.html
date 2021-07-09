@@ -1,0 +1,374 @@
+{% load static  %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>项目管理</title>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="stylesheet" href="{% static '/css/layui.css' %}"  media="all">
+    <link rel="stylesheet" href={% static  "/css/modules/laydate/default/laydate.css" %}  media="all">
+    <link rel="stylesheet" href={% static  "/css/modules/laydate/default/layer.css" %}  media="all">
+    <link rel="stylesheet" href={% static  "/css/modules/code.css" %}  media="all">
+    <link rel="stylesheet" href={% static  "/css/marmo.css" %}  media="all"/>
+    <style>
+        .all{ width:100%; height:100%;z-index:999; position:fixed;top:10px; left:10px; }
+    </style>
+</head>
+<body>
+<button type="button" class="layui-btn" id="create_project">创建项目</button>
+<table class="layui-hide" id="project" lay-filter="project"></table>
+<script type="text/html" id="barDemo">
+  <a class="layui-btn layui-btn-xs" lay-event="edit_detail">详情&修改</a>
+    <a class="layui-btn layui-btn-xs" lay-event="project_asset">项目资产</a>
+</script>
+<script type="text/html" id="toolbarDemo">
+    <div class="layui-btn-container"></div>
+</script>
+
+<script src="{% static '/js/layui.js' %}" charset="utf-8"></script>
+
+<script>
+var current_mode =""; //当前状态
+var user_id ={{ request.session.user_id }}
+console.log(user_id);
+layui.use(['table','laydate','form'], function(){
+  var table = layui.table;
+  var laydate = layui.laydate;
+  var layer = layui.layer;
+  var $ = layui.jquery;
+  var form = layui.form;
+  var delivery_date ="";
+  var actual_delivery_date ="";
+  table.render({
+    elem: '#project'
+    ,url:'/project?type=json'
+    ,defaultToolbar: ['filter','exports','print']
+    ,toolbar:'#toolbarDemo'
+    ,cols: [[
+      {field:'id', width:80, title: 'ID', sort: true}
+      ,{field:'customer', width:250, title: '客户名称'}
+      ,{field:'name', width:250, title: '项目名称', sort: true}
+      ,{field:'status', width:150, title: '当前状态'}
+      ,{field:'create_time', title: '创建时间', width: 250}
+      ,{field:'delivery_date', width:250, title: '交付时间', sort: true}
+      ,{fixed: 'right', title:'操作', toolbar: '#barDemo', width:470}
+    ]]
+    ,page: true
+      ,done:function(){
+        $("[data-field='status']").children().each(function(){
+            if ($(this).text() =="0" || $(this).text() ==0){
+                $(this).text("未开始")
+            }else if($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("进行中")
+            }else if ($(this).text() =="2" || $(this).text() ==2){
+                $(this).text("结束")
+            }
+        });
+      }
+  });
+  laydate.render({
+      elem:'#delivery_date',
+      change:function(value,data){
+          console.log("交付时间选择=="+value);
+          delivery_date = value;
+
+      },
+      done:function (value,data){
+          console.log("交付时间选择1=="+value);
+          delivery_date = value;
+      }
+
+  });
+  laydate.render({
+      elem:'#actual_delivery_date',
+      change:function (value,date){
+          console.log("实际交付时间选择=="+value);
+          actual_delivery_date = value;
+      },
+      done:function (value,data){
+          console.log("实际交付时间选择1=="+value);
+          actual_delivery_date = value;
+      }
+  });
+  //创建项目
+  $("#create_project").click(function (){
+      current_mode ="create_project";
+      $("#modify_project_div").css("display","none");
+      $("#create_project_alert").css("display","block");
+      $("#project_name").val("");
+      $("#customer").val("");
+      $("#delivery_date").val("");
+      $("#actual_delivery_date").val("");
+      $("#work_time").val("");
+      $("#pentest_tech").val("");
+      //请求服务器,获取全部的人员配置
+      //获取所有的用户
+            $.ajax({
+                type:"GET",
+                url:"/user/?type=user&page=1",
+                success:function (data){
+                    if (data.code =="0"){
+                        var user_data = data.data
+                        var user_string =""
+                        for(var i=0;i<user_data.length;i++){
+                            var one_user =user_data[i];
+                            var one_user_id = one_user.id;
+                            if (i==0){
+                                user_string+='<option value="'+one_user_id+'" selected>'+one_user.name+'</option>'
+                            }else{
+                                user_string+='<option value="'+one_user_id+'">'+one_user.name+'</option>'
+                            }
+
+                        }
+                        $("#info_group").html(user_string);
+                        $("#tool_group").html(user_string);
+                        $("#expert_group").html(user_string);
+                        form.render();
+                    }
+                }
+            })
+
+
+
+  });
+  $("#project_cancel").click(function (){
+       $("#create_project_alert").css("display","none");
+  });
+  $("#project_confirm").click(function (){
+      var project_name = $("#project_name").val();
+      var customer = $("#customer").val();
+      var info_group = $("#info_group").val();
+      var tool_group =$("#tool_group").val();
+      var expert_group=$("#expert_group").val();
+      var work_time =$("#work_time").val();
+      var pentest_tech =$("#pentest_tech").val();
+      var summary =""; //复盘总结
+      var project_status =""; //当前状态
+      if (current_mode =="modify_project"){ //项目修改
+            summary = $("#summary").val();
+            project_status = $("#project_status").val();
+      }
+      var project_delivery_date=$("#delivery_date").val();
+      var project_actual_delivery_date = $("#actual_delivery_date").val();
+      console.log(delivery_date);
+      $.ajax({
+          type:"POST",
+          url:"/project/",
+          data:{"name":project_name,"customer":customer,"info_user_id":info_group,"tool_user_id":tool_group,"expert_user_id":expert_group,"work_time":work_time,"pentest_tech":pentest_tech,"delivery_date":project_delivery_date,
+              "actual_delivery_date":project_actual_delivery_date,"summary":summary,"status":project_status,"mode":current_mode},
+          dataType:"json",
+          traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+          success:function (data){
+              if(data.code =="0"){
+                  $("#modify_project_div").css("display","none")
+                  $("#create_project_alert").css("display","none")
+                  window.location.reload()
+              }
+          },
+          fail:function (data){
+              if (data.code =="0"){
+                  alert("项目修改/创建失败"+data.msg);
+                  window.location.reload()
+              }
+          }
+      })
+
+
+  });
+  table.on('tool(project)',function (obj){
+      var data = obj.data;
+      console.log(data);
+      if (obj.event ==="edit_detail"){
+          current_mode="modify_project";
+
+
+          $("#project_name").val(data.name);
+          $("#customer").val(data.customer);
+          $("#delivery_date").val(data.delivery_date);
+          $("#actual_delivery_date").val(data.actual_delivery_date);
+          $("#work_time").val(data.work_time);
+          $("#pentest_tech").val(data.pentest_tech);
+          $("#summary").val(data.summary);
+          $("#modify_project_div").css("display","block");
+          var status =data.status;
+          var status_string=""
+          if (status =="0" || status ==0){
+              status_string+="<option value='0' selected>未开始</option><option value='1' >进行中</option><option value='2' >结束</option>"
+          }else if (status =="1" || status ==1){
+              status_string+="<option value='0' >未开始</option><option value='1' selected>进行中</option><option value='2' >结束</option>"
+          }else if(status =="2" || status ==2){
+              status_string+="<option value='0' >未开始</option><option value='1' >进行中</option><option value='2' selected >结束</option>"
+          }
+          $("#project_status").html(status_string);
+
+          //获取所有的用户
+            $.ajax({
+                type:"GET",
+                url:"/user/?type=user&page=1",
+                success:function (data){
+                    if (data.code =="0"){
+                        var user_data = data.data;
+                        var info_user_string ="";
+                        var tool_user_string ="";
+                        var expert_user_string="";
+                        for(var i=0;i<user_data.length;i++){
+                            var one_user =user_data[i];
+                            var one_user_id = one_user.id;
+                            if (data.info_user_id ==one_user_id){
+                                info_user_string+='<option value="'+one_user_id+'" selected>'+one_user.name+'</option>';
+                            }else{
+                                info_user_string+='<option value="'+one_user_id+'">'+one_user.name+'</option>';
+                            }
+
+                        }
+                        $("#info_group").html(info_user_string);
+                        for(var i=0;i<user_data.length;i++){
+                            var one_user =user_data[i];
+                            var one_user_id = one_user.id;
+                            if (data.tool_user_id ==one_user_id){
+                                tool_user_string+='<option value="'+one_user_id+'" selected>'+one_user.name+'</option>';
+                            }else{
+                                tool_user_string+='<option value="'+one_user_id+'">'+one_user.name+'</option>';
+                            }
+
+                        }
+                        $("#tool_group").html(tool_user_string);
+                        for(var i=0;i<user_data.length;i++){
+                            var one_user =user_data[i];
+                            var one_user_id = one_user.id;
+                            if (data.expert_user_id ==one_user_id){
+                                expert_user_string+='<option value="'+one_user_id+'" selected>'+one_user.name+'</option>';
+                            }else{
+                                expert_user_string+='<option value="'+one_user_id+'">'+one_user.name+'</option>';
+                            }
+
+                        }
+                        $("#expert_group").html(expert_user_string);
+                        form.render();
+                    }
+                }
+            })
+            $("#create_project_alert").css("display","block");
+      }else if(obj.event =="project_asset"){
+          //项目资产点击事件
+          var project_id = data.id;
+          var project_name = data.name;
+          window.parent.create_tabs("资产管理","{{ path }}/asset?type=html&project_name="+project_name+"&project_id="+project_id,3);
+      }
+  });
+  //表格行数据点击事件
+  {#table.on("row(project)",function(obj){#}
+  {#    var data = obj.data;#}
+  {#    console.log("行数据点击事件"+data);#}
+  {#    var project_id =data.id;#}
+  {#    var user_id =user_id;#}
+  {#    window.parent.create_tabs("资产管理","/asset?type=html",3)#}
+  {#  });#}
+});
+function getCookie(name) {
+        var cookie = document.cookie.match("\\b" + name + "=([^;]*)\\b");
+        return cookie ? cookie[1] : undefined
+    };
+
+
+</script>
+<!-- 创建项目弹窗-->
+<div class="marmo_alert" id="create_project_alert" >
+   <div class="marmo_container">
+
+          <div class="layui-form-item">
+            <label class="layui-form-label">项目名称:</label>
+            <div class="layui-input-block">
+              <input type="text" name="project_name" lay-verify="title" autocomplete="off" placeholder="请输入项目名称" class="layui-input" id="project_name">
+            </div>
+          </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">所属客户:</label>
+                <div class="layui-input-block">
+                    <input type="text" name="customer" lay-verify="title" autocomplete="off" placeholder="所属客户" class="layui-input" id="customer">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                  <label class="layui-form-label">交付日期:</label>
+                  <div class="layui-input-inline">
+                    <input type="text" name="delivery_date" id="delivery_date" lay-verify="date" placeholder="yyyy-MM-dd" autocomplete="off" class="layui-input">
+                  </div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-inline">
+                  <label class="layui-form-label">实际交付日期:</label>
+                  <div class="layui-input-inline">
+                    <input type="text" name="actual_delivery_date" id="actual_delivery_date" lay-verify="date" placeholder="yyyy-MM-dd" autocomplete="off" class="layui-input">
+                  </div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">渗透时间要求:</label>
+                <div class="layui-input-block">
+                    <input type="text" name="work_time" lay-verify="title" autocomplete="off" placeholder="渗透时间要求" class="layui-input" id="work_time">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">信息组成员:</label>
+                <div class="layui-input-block">
+                  <select name="info_group" lay-filter="aihao" id="info_group" class="sel_mask">
+                  </select>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">专家组成员:</label>
+                <div class="layui-input-block">
+                  <select name="expert_group" lay-filter="aihao" id="expert_group" class="sel_mask">
+
+                  </select>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">工具组成员:</label>
+                <div class="layui-input-block">
+                  <select name="tool_group" lay-filter="aihao" id="tool_group" class="sel_mask">
+                  </select>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">渗透手段限制:</label>
+                <div class="layui-input-block">
+                    <textarea placeholder="渗透手段描述" class="layui-textarea" name="pentest_tech" id="pentest_tech"></textarea>
+                </div>
+            </div>
+        <!-- 修改才会显示 start-->
+            <div style="display:none" id="modify_project_div">
+                <div class="layui-form-item">
+                    <label class="layui-form-label">当前状态:</label>
+                    <div class="layui-input-block">
+                      <select name="project_status" lay-filter="aihao" id="project_status" class="sel_mask">
+                      </select>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <label class="layui-form-label">复盘总结:</label>
+                    <div class="layui-input-block">
+                        <textarea placeholder="渗透信息" class="layui-textarea" name="summary" id="summary"></textarea>
+                    </div>
+                </div>
+            </div>
+        <!-- 修改才会显示 end-->
+              <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="project_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="project_cancel">取消</button>
+                </div>
+              </div>
+        </div>
+</div>
+
+</body>
+</html>

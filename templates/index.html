@@ -1,0 +1,544 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load mptt_tags %}
+
+{% block styles %}
+
+    <style>
+        body {
+            display: block;
+            margin: 0px;
+            background-color: #f4f7fa;
+        }
+
+        .layui-footer .layui
+        body {
+            display: block;
+            margin: 0px;
+            background-color: #f4f7fa;
+        }
+
+
+        .layui-layout-admin .layui-header {
+            height: 50px;
+            background-color: {% if  user_item.0.theme  %}{{ user_item.0.theme }};{% else %} #009688;{% endif %} box-sizing: border-box;}
+
+
+        .layui-layout .layui-logo, .layui-layout .layui-logo a {
+            color: #fff;
+            color: rgba(255, 255, 255, .8);
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, .15);
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 1002;
+            width: 220px;
+            height: 49px;
+            padding: 0 15px;
+            box-sizing: border-box;
+            overflow: hidden;
+            font-weight: 300;
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-color: {% if  user_item.0.theme  %}{{ user_item.0.theme }};
+        {% else %}
+            #009688;
+        {% endif %}
+        line-height: 50px;
+        font-size: 16px;
+        cursor: pointer;
+
+        }
+
+
+        .layui-nav-tree {
+            width: 220px;
+            padding: 0;
+        }
+
+        .layui-header > .layui-layout-left > .layui-nav-item {
+            height: 50px;
+        }
+
+        .layui-header > .layui-layout-right > .layui-nav-item {
+            height: 50px;
+        }
+
+        .layui-header > .layui-layout-right {
+            height: 50px;
+        }
+
+        .layui-header > .layui-layout-left {
+            height: 50px;
+        }
+
+        .layui-nav-child {
+            top: 50px;
+        }
+
+        .pagetabs {
+            height: 40px;
+            line-height: 40px;
+            background-color: #fff;
+            box-sizing: border-box;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, .1);
+            position: fixed;
+            top: 50px;
+            right: 0;
+            z-index: 999;
+            left: 220px;
+        }
+
+        .pagetabs > .layui-tab {
+            height: 30px;
+            margin: 0;
+        }
+
+        -body {
+            left: 220px;
+        }
+
+        .layui-layout-admin .layui-side {
+            top: 50px;
+            width: 220px;
+        }
+
+        .layui-col-xs3 {
+            text-align: center;
+        }
+
+        .layui-col-xs3_i {
+            font-size: 28px;
+        }
+
+        {#tab#}
+        .layui-tab-card > .layui-tab-title {
+            background-color: #f2f2f2;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, .1);
+        }
+    </style>
+{% endblock %}
+
+
+
+{% block body %}
+    <div class="layui-layout layui-layout-admin">
+        {#top#}
+        <div class="layui-header">
+            <div class="layui-logo">Marmo渗透平台</div>
+            <ul class="layui-nav layui-layout-left" lay-filter="t_leftmenu">
+                <li class="layui-nav-item layui-this"><a href="">
+                    {% for home in homepage %}
+                        {{ home.name }}
+                    {% endfor %}
+                </a></li>
+            </ul>
+            <ul class="layui-nav layui-layout-right" lay-filter="t_rightmenu">
+                <li class="layui-nav-item" style="top: 0px;">
+                    <div id="test-all" class="layui-inline">
+
+                    </div>
+                </li>
+                <!-- 个人信息 -->
+                <li class="layui-nav-item">
+                    <a href="#">
+                        <img src="{{ path }}/{{user.avatar}}" class="layui-nav-img">
+                        {{ user.name }}
+                    </a>
+                </li>
+                <!-- 退出 -->
+                <li class="layui-nav-item"><a onclick="logout()">退出</a></li>
+            </ul>
+        </div>
+        <div class="layui-side layui-bg-black">
+            <div class="layui-side-scroll" style="overflow-y:hidden">
+                <ul id="leftmenu" class="layui-nav layui-nav-tree my-tt" lay-filter="leftmenu">
+                    {% for node in leftmenu %}
+                        <li class="layui-nav-item leaf" id="{{ node.id }}" title="{{ node.name }}"
+                            value="{{ node.menu_url }}">
+                            <a href="#">{{ node.name }}</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="pagetabs" id="tabs">
+            <div class="layui-tab layui-tab-card " lay-allowClose="true" lay-filter="tabs">
+                <ul class="layui-tab-title">
+
+                </ul>
+                <div class="layui-tab-content">
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+    <div style="display: none" id="test_run_button">
+        <div class="layui-form-item" style="display: none">
+            <label class="layui-form-label">关联资产:</label>
+            <div class="layui-input-block">
+              <input type="text" name="add_vuln_asset" id="add_vuln_asset" lay-verify="title" autocomplete="off"  class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">资产类型:</label>
+                <div class="layui-input-block">
+                  <select name="add_vuln_info_asset_type" id="add_vuln_info_asset_type" lay-filter="aihao">
+
+                  </select>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">关联项目:</label>
+                <div class="layui-input-block">
+                  <input type="text" name="add_vuln_project_name" id="add_vuln_project_name" lay-verify="title" autocomplete="off"  class="layui-input">
+                </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">漏洞名称:</label>
+            <div class="layui-input-block">
+              <input type="text" name="vuln_name" id="vuln_name" lay-verify="title" autocomplete="off" placeholder="请输入漏洞名称" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">漏洞评级:</label>
+                <div class="layui-input-block">
+                  <select name="vuln_level" id="vuln_level" lay-filter="aihao">
+                    <option value="1">高</option>
+                    <option value="1">中</option>
+                    <option value="1">低</option>
+                  </select>
+                </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">漏洞影响:</label>
+            <div class="layui-input-block">
+              <textarea placeholder="漏洞影响" class="layui-textarea" name="vuln_affect" id="vuln_affect"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">漏洞详情&复现:</label>
+            <div class="layui-input-block">
+              <textarea placeholder="漏洞详情&复现" class="layui-textarea" name="vuln_details" id="vuln_details"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_vuln_info_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_vuln_info_cancel">取消</button>
+                </div>
+        </div>
+
+</div>
+
+
+
+{% endblock %}
+
+{% block scripts %}
+
+
+    <script>
+
+
+        //设置页面加载完成的函数,设置
+        function init_tab(element){
+            $.ajax({
+                type:"GET",
+                url:"/menujson",
+                success:function (data){
+                    if (data.code =="0"){
+                        var data = data.data
+                        var menu_name =data.name
+                        var menu_url = data.menu_url
+                        //添加
+                        var havetab = false //定义当前没有这个tab
+                        var tabsValues = $('.layui-tab-title li').length; //tab数量
+                        var havetabval = '' //定义当前tab内容为空（再获取）
+                        //循环已经打开的tab,判断是否出现
+                        for (var i = 0; i < tabsValues; i++) {
+                            //获取全部tab属性为value的值
+                            var tabcontexts = $('.layui-tab-title li:eq(' + [i+1] + ')').text().replace('ဆ', '');
+                            //如果tab有左边菜单传入value内容
+                            if (menu_name === tabcontexts) {
+                                havetabval = tabcontexts;
+                                havetab = true
+                            }
+                        }
+                        //如果没有添加并且树类型是叶子
+                        if (havetab === false ) {
+                            element.tabAdd('tabs', {
+                                class: 'layui-this',
+                                title: '<span title="' + menu_name + '">' + menu_name + '</span>'
+                                ,
+                                content: '<iframe  id="'+1+'" class=\'layui-col-xs12\'   frameborder="no"  allowtransparency="yes" height="1500px"  border="0px" scrolling="auto"  src="'+menu_url+'"></iframe>  '
+                                ,
+                                id: menu_name
+                            });
+                            element.tabChange('tabs', menu_name); //当前的tab焦点
+                        } else {
+                            element.tabChange('tabs', menu_name); //当前的tab焦点
+                        }
+
+                    }
+                }
+                }
+            )
+        }
+        //设置左侧菜单栏主题颜色
+        $('.header-demo,.layui-side .layui-nav ').css('background-color',
+            {% if  user_item.0.theme  %}'{{ user_item.0.theme }}'{% else %}'#009688'
+            {% endif %}
+        )
+
+        //当前时间控件
+        window.onload = function () {
+            var d = new Date();
+            //获取年份
+            //var nian=d.getYear();//2016  //16
+            var nian = d.getFullYear();//2016
+            //获取月
+            var yue = d.getMonth() + 1;//6   july 7月   0-11
+            //获取星期几
+            var xq = d.getDay();//5    0-6    0:星期天
+            //获取几号
+            var dd = d.getDate();//1    1-31
+            //获取小时
+            var h = d.getHours();// 16下午4点     24小时制
+            //获取分钟
+            var m = d.getMinutes();//31分
+            //获取描述
+            var s = d.getSeconds();//50秒
+            //渲染浏览记录
+            $.ajax({
+                type: "GET",
+                url: "{{ path }}/select_browse_record",
+                data: {menu_id: $(this).parent('').attr('id')},
+                dataType: "json",
+                success: function (data) {
+                    var select_browse_record_list = "";
+                    var select_browse_record_list_name = "";
+                    for (i in data.menu) {
+
+                        if (data.menu[i].name.length > 5) {
+                            select_browse_record_list_name = data.menu[i].name.substr(0, 4) + "..."
+                        } else {
+                            select_browse_record_list_name = data.menu[i].name
+                        }
+                        select_browse_record_list += "<li class=\"layui-col-xs3\" id=\"" + data.menu[i].id + "\" title=\"" + data.menu[i].name + "\" value=\"" + data.menu[i].menu_url + "\">\n" +
+                            "<a lay-href=\"home/homepage1.html\">\n" +
+                            " <i class=\"" + data.menu[i].menu_icon + " layui-icon  layui-col-xs3_i\"></i>\n" +
+                            "<p>" + select_browse_record_list_name + "</p>\n" +
+                            "</a>\n" +
+                            "</li>"
+
+                    }
+                    $('#select_browse_record').html(
+                        select_browse_record_list
+                    )
+                }
+            });
+
+            $("#showtime_year").text(nian);
+            $("#showtime_month").text(yue);
+            $("#showtime_day").text(dd);
+            $("#showtime_time").text(h + ":" + m)
+
+        };
+        //layui部分
+        layui.use('element', function () {
+            //element模块的实例
+            //返回的element变量为该实例的对象，携带一些用于元素操作的基础方法
+            var element = layui.element;
+            var $ = layui.jquery, layer = layui.layer;
+            //清除左树子集的class（django mptt children 特性）
+            $(".layui-nav-item .layui-nav-item").removeClass("layui-nav-item");
+            //更新全部  2.1.6 可用 element.render() 方法替代
+            element.init();
+            init_tab(element);
+            var colorpicker = layui.colorpicker; //颜色选择
+            //开启全功能
+            colorpicker.render({
+                elem: '#test-all'
+                , color: 'rgba(7, 155, 140, 1)'
+                , format: 'rgb'
+                , predefine: true
+                , alpha: true
+                , size: 'sm'
+                , done: function (color) {
+                    $('#test-all-input').val(color); //向隐藏域赋值
+                    $.ajax({
+                        type: "POST",
+                        url: "{{ path }}/check_theme",
+                        data: {theme: color, csrfmiddlewaretoken: '{{ csrf_token  }}'},
+                        dataType: "json",
+                        success: function (data) {
+                            layer.tips('给侧边栏设置了颜色值：' + color, this.elem);
+                        }
+                    });
+                    color || this.change(color); //清空时执行 change
+                }
+                , change: function (color) {
+                    //给当前页面头部和左侧设置主题色
+                    $('.header-demo,.layui-side .layui-nav ').css('background-color', color);
+                    $('.layui-logo ').css('background-color', color);
+                    $('.layui-header ').css('background-color', color);
+
+                }
+            });
+
+            //监听左树点击
+            element.on('nav(leftmenu)', function addtabandpage(data) {
+                $(".layui-tab-title #home i").remove() //删除首页关闭按钮
+                var addtabname = $(this).parent('').attr('title'); //得到当前点击的li name
+                var addtabval = $(this).parent('').attr('value'); //得到当前点击的li对象
+                var addtabclass = $(this).parent('').attr('class'); //得到当前点击的li class属性
+                var addtabid = $(this).parent('').attr('id'); //得到同调点击的左树id
+                var havetab = false //定义当前没有这个tab
+                var tabsValues = $('.layui-tab-title li').length; //tab数量
+                var havetabval = '' //定义当前tab内容为空（再获取）
+                //循环已经打开的tab,判断是否出现
+                for (var i = 0; i < tabsValues; i++) {
+                    //获取全部tab属性为value的值
+                    var tabcontexts = $('.layui-tab-title li:eq(' + [i] + ')').text().replace('ဆ', '');
+                    //如果tab有左边菜单传入value内容
+                    if (addtabname === tabcontexts) {
+                        havetabval = tabcontexts;
+                        havetab = true
+                    }
+                }
+
+
+                //如果没有添加并且树类型是叶子
+                if (havetab === false && addtabclass.match('leaf')) {
+                    element.tabAdd('tabs', {
+                        class: 'layui-this',
+                        title: '<span title="' + addtabval + '">' + addtabname + '</span>'
+                        ,
+                        content: '<iframe  id="' + addtabid + '" class=\'layui-col-xs12\'   frameborder="no"  allowtransparency="yes" height="1500px"  border="0px" scrolling="auto"  src="'+addtabval+'"></iframe>  '
+                        ,
+                        id: addtabname
+                    });
+                    element.tabChange('tabs', addtabname); //当前的tab焦点
+                } else {
+                    element.tabChange('tabs', addtabname); //当前的tab焦点
+                }
+            });
+
+
+            //监听tab点击
+            element.on('tab(tabs)', function (data) {
+                $(".layui-tab-title #home i").remove();//删除首页关闭按钮
+                var has = '{{ path }}/' + $(this).children('').attr('title'); //hash地址
+                element.tabChange('tabs', has); //重新渲染
+            });
+            //监听个人信息点击
+            $(document).on('click', '#my_info', function () {
+                layer.open({
+                    btn: ['确认'],
+                    btn1: function (index, layero) {
+                        layer.close(index);
+                    },
+                    title: '个人资料',
+                    id: "my_info_open",
+                    anim: 4, //从左翻滚
+                    btnAlign: 'c', //按钮居中
+                    type: 2, //类型iframe
+                    resize: true,
+                    moveOut: true,
+                    maxmin: true,
+                    scrollbar: true,
+                    shadeClose: true, //点击遮罩关闭层
+                    area: ['500px', '520px'],
+                    content: '{{ path }}/user_info?user_list_id={{ user_item.0.user_id }}'
+                })
+            });
+
+        });
+
+        {#定时刷新当前时间#}
+        function showtime() {
+            var d = new Date();
+            //获取年份
+            //var nian=d.getYear();//2016  //16
+            var nian = d.getFullYear();//2016
+            //获取月
+            var yue = d.getMonth() + 1;//6   july 7月   0-11
+            //获取星期几
+            var xq = d.getDay();//5    0-6    0:星期天
+            //获取几号
+            var dd = d.getDate();//1    1-31
+            //获取小时
+            var h = d.getHours();// 16下午4点     24小时制
+            //获取分钟
+            var m = d.getMinutes();//31分
+            //获取描述
+            var s = d.getSeconds();//50秒
+            $("#showtime_year").text(nian);
+            $("#showtime_month").text(yue);
+            $("#showtime_day").text(dd);
+            $("#showtime_time").text(h + ":" + m)
+
+        }
+
+        {#每分钟刷新#}
+        setInterval("showtime()", 6000);
+        $(".layui-tab-title #home i").remove() //删除首页关闭按钮
+        function create_tabs(addtabname,addtabval,addtabid){
+                layui.use('element',function (){
+                    var element = layui.element;
+                    var havetab = false //定义当前没有这个tab
+                var tabsValues = $('.layui-tab-title li').length; //tab数量
+                var havetabval = '' //定义当前tab内容为空（再获取）
+                //循环已经打开的tab,判断是否出现
+                for (var i = 0; i < tabsValues; i++) {
+                    //获取全部tab属性为value的值
+                    var tabcontexts = $('.layui-tab-title li:eq(' + [i+1] + ')').text().replace('ဆ', '');
+                    //如果tab有左边菜单传入value内容
+                    if (addtabname === tabcontexts) {
+                        havetabval = tabcontexts;
+                        havetab = true
+                    }
+                }
+
+
+                //如果没有添加并且树类型是叶子
+                if (havetab === false ) {
+                    element.tabAdd('tabs', {
+                        class: 'layui-this',
+                        title: '<span title="' + addtabval + '">' + addtabname + '</span>'
+                        ,
+                        content: '<iframe  id="' + addtabid + '" class=\'layui-col-xs12\'   frameborder="no"  allowtransparency="yes" height="1500px"  border="0px" scrolling="auto"  src="'+addtabval+'"></iframe>  '
+                        ,
+                        id: addtabname
+                    });
+                    element.tabChange('tabs', addtabname); //当前的tab焦点
+                } else {
+                    element.tabChange('tabs', addtabname); //当前的tab焦点
+                }
+                });
+
+
+        };
+        function logout(){
+            $.ajax({
+                url:"/logout/",
+                traditional: true,
+                async: false,
+                headers:{
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                success:function(){
+                    window.location.href ="/login.html"
+                }
+            })
+        }
+        function getCookie(name) {
+        var cookie = document.cookie.match("\\b" + name + "=([^;]*)\\b");
+        return cookie ? cookie[1] : undefined
+        }
+
+    </script>
+
+{% endblock %}

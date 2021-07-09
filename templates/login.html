@@ -1,0 +1,85 @@
+{% load static %}
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title></title>
+    <link rel="stylesheet" href="{% static 'css/login/body.css' %}" type="text/css">
+    <link rel="stylesheet" href="{% static 'css/login/style.css' %}" type="text/css">
+    <link rel="stylesheet" href="{% static 'css/layui.css' %}" media="all" type="text/css">
+
+    <link rel="stylesheet" href="{% static 'css/modules/laydate/default/laydate.css' %}" type="text/css">
+    <link rel="stylesheet" href="{% static 'css/modules/code.css' %}" type="text/css">
+    <!-- 先引入 jquery -->
+    <script type="text/javascript" src="{% static 'js/jquery-1.4.4.min.js' %}"></script>
+
+    <script type="text/javascript" src="{% static 'js/layui.js' %}"></script>
+{#    <script type="text/javascript" src="{% static 'js/layui.all.js' %}"></script>#}
+</head>
+<body class="body">
+<div class="container">
+    <section id="content">
+        <form class="layui-form" method="post" action="{{ path }}/login/">
+            {% csrf_token %}{# 随机码 #}
+            <h1>登 录</h1>
+            <div class="layui-form-item">
+                <label class="layui-form-label">账号 <i style="color:red">*</i></label>
+                <div class="layui-input-block">
+                    <input type="text" name="username" lay-verify="required|username"
+                           placeholder="请输入账号"
+                           class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">密码 <i style="color:red">*</i></label>
+                <div class="layui-input-block">
+                    <input type="password" name="password" lay-verify="required|password" placeholder="请输入密码"
+                           class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-input-block" style="margin-left: 0px">
+                    <button class="layui-btn" lay-submit onclick="" style="width: 200px;" id="commit" lay-filter="*">登录</button>
+                </div>
+            </div>
+
+        </form><!-- form -->
+    </section><!-- content -->
+</div>
+<!-- container -->
+
+
+<br><br><br><br>
+</body>
+<script>
+    layui.use(['layer', 'form', 'upload'], function (data) {
+        var layer = layui.layer;
+        var form = layui.form;
+        var upload = layui.upload;
+        var $ = layui.jquery;
+        form.render();//表单渲染
+        //表单验证
+        form.verify({
+            username: function (value, item) { //value：表单的值、item：表单的DOM对象
+                if (!new RegExp("^[a-zA-Z0-9_\u4e00-\u9fa5\\s·]+$").test(value)) {
+                    return '用户名不能有特殊字符';
+                }
+                if (/(^\_)|(\__)|(\_+$)/.test(value)) {
+                    return '用户名首尾不能出现下划线\'_\'';
+                }
+                if (/^\d+\d+\d$/.test(value)) {
+                    return '用户名不能全为数字';
+                }
+            }
+        });
+        //表单提交
+        form.on('submit(*)', function (data) {
+            var $ = layui.jquery;
+            return true;
+        });
+    })
+
+</script>
+</html>

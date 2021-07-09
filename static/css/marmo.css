@@ -1,0 +1,59 @@
+.marmo_alert{
+  position: fixed; top: 0; left: 0;z-index: 19991014; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.4);justify-content:center;align-items:center;display: none;
+}
+.log_info_p{
+    margin-bottom: 20px;
+    margin-top: 10px;
+}
+.log_info_cancel{
+    background-color: #1E9FFF;
+    height:80px;
+    width:250px;
+    margin-left: 40%;
+    font-size: 50px;
+    color:white
+}
+.marmo_container{
+    overflow: auto;width:60%;height:55%;left:200px;top:15px;position:fixed;z-index: 19992010;background: #e9e7e7
+}
+.sel_mask{                    /*将<a></a>相对定位*/
+            position:relative;
+            width:200px;
+            height:25px;
+            background:#24A0D8;
+            border-radius: 5px;
+            box-shadow:1px 1px 5px #1E9FFF;
+            display:inline-block;
+            text-decoration: none;
+        }
+        .sel_mask:hover{         /*添加hover效果*/
+            background:#169BD5;
+        }
+        .sel_mask select{        /*以相同大小将<select></select>绝对定位*/
+            top:0px;
+            left:0px;
+            position:absolute;
+            width:200px;
+            height:25px;
+            opacity:0;
+        }
+        .sel_mask select option[selected]{
+            font-weight:bold
+        }
+        .sel_mask select option:nth-child(even) {
+            background-color:#A7DAEF;
+        }
+        .sel_mask select option{
+            color:#EA5400;
+        }
+        .sel_mask span{     /*显示内容*/
+            position: absolute;
+            top:3px;
+            left:5px;
+            right: 20px;
+            display: inline-block;
+            color:#fff;
+            overflow:hidden;
+            text-overflow: ellipsis;
+            white-space:nowrap;
+        }

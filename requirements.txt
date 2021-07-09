@@ -1,0 +1,10 @@
+requests
+PyExecJS
+scrapy
+PyMySQL
+celery===4.4.7
+django-mptt
+django_redis
+selenium
+lxml
+django-background-tasks

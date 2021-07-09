@@ -1,0 +1,380 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>web深度识别</title>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="stylesheet" href='{% static "/css/layui.css" %}'  media="all">
+    <link rel="stylesheet" href={% static  "/css/marmo.css" %}  media="all"/>
+</head>
+<body>
+<button type="button" class="layui-btn" id="add_component_button">新增模块</button>
+<div class="layui-inline">
+        <label class="layui-form-label">组件名称:</label>
+        <div class="layui-input-inline">
+            <input class="layui-input" name="component_name_input" id="component_name_input">
+        </div>
+</div>
+<div class="layui-inline">
+        <label class="layui-form-label">组件版本:</label>
+        <div class="layui-input-inline">
+            <input class="layui-input" name="component_version_input" id="component_version_input">
+        </div>
+</div>
+<button type="button" class="layui-btn layui-btn-radius" data-type="component_search" id="component_search">查询</button>
+<table class="layui-hide" id="web_recongnize" lay-filter="web_recongnize"></table>
+<script type="text/html" id="barDemo">
+  <a class="layui-btn layui-btn-xs" lay-event="edit">编辑/查看</a>
+    <a class="layui-btn layui-btn-xs" lay-event="log_info">log_info</a>
+</script>
+<script type="text/html" id="toolbarDemo">
+    <div class="layui-btn-container"></div>
+</script>
+
+<script src='{% static "/js/layui.js" %}' charset="utf-8"></script>
+
+<script>
+      function getCookie(name) {
+        var cookie = document.cookie.match("\\b" + name + "=([^;]*)\\b");
+        return cookie ? cookie[1] : undefined
+    }
+    var asset="{{ asset }}";
+    var project_name ="{{ project_name }}";
+layui.use(['table','form'], function(){
+  var table = layui.table;
+  var $ =layui.jquery;
+  var form = layui.form;
+  table.render({
+    elem: '#web_recongnize'
+    ,defaultToolbar: ['filter','exports','print']
+    ,toolbar:"#toolbarDemo"
+    ,url:'/recongnize?type=json&asset='+asset+"&project_name="+project_name+"&component_name=&component_version="
+    ,cols: [[
+      {field:'id', width:80, title: 'ID', sort: true}
+      ,{field:'component_name', width:250, title: '模块名称'}
+      ,{field:'create_source', width:150, title: '来源', sort: true}
+      ,{field:'component_type', width:100, title: '模块类型'}
+      ,{field:'version', title: '模块版本', width: 250}
+      ,{field:'create_time', width:150, title: '创建时间'}
+      ,{field:'source_detail', width:350, title: '来源详情'}
+      ,{field:'description', width:350, title: '描述',hide:true}
+      ,{fixed: 'right', title:'操作', toolbar: '#barDemo', width:450}
+    ]]
+    ,page: true,
+      done:function(){
+        $("[data-field='create_source']").children().each(function(){
+            if ($(this).text() =="from"){
+                $(this).text("项目中创建")
+            }else if($(this).text() =="manual" || $(this).text() ==2){
+                $(this).text("手工创建")
+            }
+        });
+        $("[data-field='component_type']").children().each(function(){
+            var text = $(this).text();
+            if (text=="0" || text ==0){
+                $(this).text("未知")
+            }else if(text=="1" || text ==1){
+                $(this).text("开发语言")
+            }else if(text=="2" || text ==2){
+                $(this).text("中间件")
+            } else if(text=="3" || text ==3){
+                $(this).text("模块/框架")
+            }else if(text=="4" || text ==4){
+                $(this).text("CMS")
+            }
+        });
+      }
+  });
+  //工具栏监听
+  table.on('tool(web_recongnize)',function (obj){
+      var data = obj.data;
+      if (obj.event =="edit"){
+          $("#update_component_name").val(data.component_name);
+          $("#update_component_version").val(data.version);
+          $("#update_component_description").val(data.description);
+          $("#update_component_id").val(data.id);
+          var source = data.create_source;
+          var source_string =""
+          if (source =="manual"){
+              source_string +='<option value="manual" selected>手工创建</option><option value="from" >项目中创建</option>'
+          }else if (source =="from"){
+              source_string +='<option value="manual" >手工创建</option><option value="from" selected>项目中创建</option>'
+          }
+          $("#update_component_source").html(source_string);
+          var type_string =""
+          var component_type =data.component_type;
+          var type_list=["未知","开发语言","中间件","模块/框架","CMS"]
+          for(var i=0;i<type_list.length;i++){
+              if (parseInt(component_type) ==i || component_type ==i.toString()){
+                  type_string+='<option value="'+i+'" selected >'+type_list[i]+'</option>'
+              }else{
+                  type_string+='<option value="'+i+'"  >'+type_list[i]+'</option>'
+              }
+          }
+          $("#update_component_type").html(type_string);
+          $("#update_component_name").val(data.component_name);
+          form.render();
+          $("#update_componet_div").css("display","block");
+
+      }else if (obj.event =="log_info"){
+          var asset_id =data.id;
+
+          $.ajax({
+                url:"/loginfo?asset_id="+asset_id+"&project_name="+project_name+"&asset_type=4",
+                type:"GET",
+                success:function(data){
+                    if (data.code =="0"){
+                        $("#log_info").val('');
+                        var info = data.info;
+                        var p_string =""
+                        for(var i=0;i<info.length;i++){
+                            p_string+="<p class='log_info_p'>"+info[i]+"</>"
+                        }
+                        console.log(p_string);
+                        $("#log_info").html(p_string);
+                        $("#log_info_alert").css("display","block");
+                    }else if (data.code =="-1"){
+                        alert(data.info)
+                    }
+                }
+          });
+
+      }
+  });
+  $("#update_componet_cancel").click(function (){
+      $("#update_componet_div").css("display","none");
+  });
+  $("#log_info_cancel").click(function (){
+     $("#log_info_alert").css("display","none");
+  });
+  $("#update_componet_confirm").click(function (){
+
+      var component_name =$("#update_component_name").val();
+        var component_version=$("#update_component_version").val();
+        var component_type =$("#update_component_type").val();
+        var create_source = $("#update_component_source").val(); //模块来源
+        var description =$("#update_component_description").val();
+        var component_id =$("#update_component_id").val();
+        $.ajax({
+            url:"/recongnize/",
+            type:"POST",
+            traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            data:{
+                "type":"modify",
+                "project_name":project_name,
+                "asset":asset,
+                "component_name":component_name,
+                "component_version":component_version,
+                "component_type":component_type,
+                "create_source":create_source,
+                "description":description,
+                "asset_id":component_id
+            },
+            success:function (data){
+                if (data.code =="0"){
+                    alert("修改组件成功");
+                    $("#add_componet_div").css("display","none");
+                    window.location.reload();
+                }else if (data.code =="-1"){
+                    alert(data.msg);
+                    $("#add_componet_div").css("display","none");
+                }
+            },
+            fail:function (data){
+                alert(data.msg);
+                $("#add_componet_div").css("display","none");
+            }
+
+        });
+  });
+  $("#component_search").click(function (){
+      var component_name = $("#component_name_input").val();
+      var component_version =$("#component_version_input").val();
+      table.reload('web_recongnize',{
+              url:"/recongnize?type=json&asset="+asset+"&project_name="+project_name+"&component_name="+component_name+"&component_version="+component_version,
+              page:{
+                  curr:1
+              },
+          })
+  });
+  //新建组件
+  $("#add_component_button").click(function (){
+      $("#component_name").val("");
+      $("#component_version").val("");
+
+      $("#source_detail").val("");
+      $("#description").val("");
+      $("#add_componet_div").css("display","block");
+  });
+  $("#add_componet_confirm").click(function (){
+        var component_name =$("#component_name").val();
+        var component_version=$("#component_version").val();
+        var component_type =$("#component_type").val();
+        var source_detail = $("#source_detail").val();
+        var description =$("#description").val();
+        $.ajax({
+            url:"/recongnize/",
+            type:"POST",
+            traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            data:{
+                "type":"add",
+                "project_name":project_name,
+                "asset":asset,
+                "component_name":component_name,
+                "component_version":component_version,
+                "component_type":component_type,
+                "source_detail":source_detail,
+                "description":description
+            },
+            success:function (data){
+                if (data.code =="0"){
+                    alert("新增组件成功");
+                    $("#add_componet_div").css("display","none");
+                    window.location.reload();
+                }else if (data.code =="-1"){
+                    alert(data.msg);
+                    $("#add_componet_div").css("display","none");
+                }
+            },
+            fail:function (data){
+                alert(data.msg);
+                $("#add_componet_div").css("display","none");
+            }
+
+        });
+
+  });
+  $("#add_componet_cancel").click(function (){
+      $("#add_componet_div").css("display","none");
+  });
+});
+</script>
+
+<div class="marmo_alert" id="add_componet_div">
+    <div class="marmo_container">
+        <div class="layui-form-item">
+            <label class="layui-form-label">组件名称:</label>
+            <div class="layui-input-block">
+              <input type="text" name="component_name" id="component_name" lay-verify="title" autocomplete="off" placeholder="请输入模块名称" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">组件版本:</label>
+            <div class="layui-input-block">
+              <input type="text" name="component_version" id="component_version" lay-verify="title" autocomplete="off" placeholder="请输入模块版本" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">组件类型:</label>
+            <div class="layui-input-block">
+              <select name="component_type" id="component_type" class="sel_mask">
+                  <option value="0">未知</option>
+                  <option value="1">开发语言</option>
+                  <option value="2">中间件</option>
+                  <option value="3">模块/框架</option>
+                  <option value="4">CMS</option>
+              </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">来源详情:</label>
+                <div class="layui-input-block">
+                    <textarea placeholder="标题" class="layui-textarea" name="source_detail" id="source_detail"></textarea>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">备注:</label>
+                <div class="layui-input-block">
+                    <textarea placeholder="标题" class="layui-textarea" name="description" id="description"></textarea>
+                </div>
+        </div>
+
+        <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_componet_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_componet_cancel">取消</button>
+                </div>
+              </div>
+    </div>
+</div>
+
+<div class="marmo_alert" id="update_componet_div">
+    <div class="marmo_container">
+        <div class="layui-form-item" style="display: none">
+            <label class="layui-form-label">模块ID:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_component_id" id="update_component_id" lay-verify="title" disabled autocomplete="off" placeholder="请输入模块名称" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">模块名称:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_component_name" id="update_component_name" lay-verify="title" disabled autocomplete="off" placeholder="请输入模块名称" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">模块版本:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_component_version" id="update_component_version" lay-verify="title" autocomplete="off" placeholder="请输入模块版本" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">模块类型:</label>
+            <div class="layui-input-block">
+              <select name="update_component_type" id="update_component_type" lay-filter="aihao" class="sel_mask">
+
+              </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">模块来源:</label>
+            <div class="layui-input-block">
+              <select name="update_component_source" id="update_component_source" lay-filter="aihao" class="sel_mask">
+                  </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">备注:</label>
+                <div class="layui-input-block">
+                    <textarea placeholder="标题" class="layui-textarea" name="update_component_description" id="update_component_description"></textarea>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="update_componet_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="update_componet_cancel">取消</button>
+                </div>
+              </div>
+    </div>
+</div>
+
+<!--  显示loginfo-->
+<div class="marmo_alert" id="log_info_alert">
+    <div class="marmo_container">
+        <div class="layui-form-item" style="height: 100%">
+                <div class="layui-input-block" style="height: 100%;background-color: #fff" id="log_info">
+{#                  <textarea id="log_info" lay-verify="title" autocomplete="off"  class="layui-input" style="height: 100%"></textarea>#}
+                </div>
+            </div>
+        <div class="layui-form-item">
+                    <div class="layui-input-block">
+                      <button type="button" class="log_info_cancel" id="log_info_cancel">取消</button>
+                    </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

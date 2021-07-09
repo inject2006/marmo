@@ -1,0 +1,1508 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>资产管理</title>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="stylesheet" href='{% static "/css/layui.css"  %}' media="all"/>
+  <link rel="stylesheet" href={% static  "/css/marmo.css" %}  media="all"/>
+</head>
+<body>
+<div class="layui-tab layui-tab-card">
+  <ul class="layui-tab-title">
+    <li class="layui-this" id="online_domain_li">在线资产表(域名)</li>
+    <li id="online_ip_li">在线资产表(ip)</li>
+    <li id="onlie_security_li">安全设备</li>
+  </ul>
+  <div class="layui-tab-content" style="height: 100px;">
+    <div class="layui-tab-item layui-show" id="online_domain_div">
+        <button type="button" class="layui-btn" id="add_domain_button">新增域名</button>
+        <div class="layui-inline">
+                <label class="layui-form-label">域名:</label>
+                <div class="layui-input-inline">
+                    <input class="layui-input" name="domain_search_input" id="domain_search_input">
+                </div>
+        </div>
+        <button type="button" class="layui-btn layui-btn-radius" data-type="domain_search" id="domain_search">查询</button>
+        <table class="layui-hide" id="domain" lay-filter="domain"></table>
+    </div>
+    <div class="layui-tab-item" id="online_ip_div">
+        <div class="layui-inline"><button type="button" class="layui-btn" id="add_ip_button">新增ip</button></div>
+        <div class="layui-inline">
+                <label class="layui-form-label">ip:</label>
+                <div class="layui-input-inline">
+                    <input class="layui-input" name="ip" id="asset_ip_search">
+                </div>
+        </div>
+        <div class="layui-inline">
+                <label class="layui-form-label">关联域名:</label>
+                <div class="layui-input-inline">
+                    <input class="layui-input" name="asset_domain_search" id="asset_domain_search">
+                </div>
+        </div>
+        <button type="button" class="layui-btn layui-btn-radius" data-type="ip_search" id="ip_search">查询</button>
+        <table class="layui-hide" id="ip" lay-filter="ip"></table>
+    </div>
+    <div class="layui-tab-item" id="online_security_div">
+        <button type="button" class="layui-btn" id="add_security_button">新增安全设备</button>
+        <table class="layui-hide" id="security" lay-filter="security"></table>
+    </div>
+  </div>
+</div>
+
+
+
+
+<script type="text/html" id="barDemo">
+  <a class="layui-btn layui-btn-xs" lay-event="edit_domain">详情&修改</a>
+  <a class="layui-btn layui-btn-xs" lay-event="edit_related_ip">关联IP</a>
+  <a class="layui-btn layui-btn-xs" lay-event="log_info">log_info</a>
+  <a class="layui-btn layui-btn-xs" lay-event="add_process_info">新增渗透信息</a>
+  <a class="layui-btn layui-btn-xs" lay-event="process_info_detail">渗透信息详情</a>
+  <a class="layui-btn layui-btn-xs" lay-event="run">运行</a>
+  <a class="layui-btn layui-btn-xs" lay-event="add_vuln">新增漏洞</a>
+  <a class="layui-btn layui-btn-xs" lay-event="vuln_detail">查看漏洞</a>
+</script>
+<script type="text/html" id="ipBarDemo">
+  <a class="layui-btn layui-btn-xs" lay-event="edit_ip">详情&修改</a>
+  <a class="layui-btn layui-btn-xs" lay-event="server">开放端口</a>
+ <a class="layui-btn layui-btn-xs" lay-event="log_info">log_info</a>
+  <a class="layui-btn layui-btn-xs" lay-event="add_process_info">新增渗透信息</a>
+  <a class="layui-btn layui-btn-xs" lay-event="process_info_detail">渗透信息详情</a>
+  <a class="layui-btn layui-btn-xs" lay-event="run">运行</a>
+  <a class="layui-btn layui-btn-xs" lay-event="add_vuln">新增漏洞</a>
+  <a class="layui-btn layui-btn-xs" lay-event="vuln_detail">查看漏洞</a>
+  <a class="layui-btn layui-btn-xs" lay-event="side_stations">旁站</a>
+</script>
+<script type="text/html" id="SecurityBarDemo">
+  <a class="layui-btn layui-btn-xs" lay-event="edit">详情&修改</a>
+</script>
+<script type="text/html" id="toolbarDemo">
+    <div class="layui-btn-container"></div>
+</script>
+
+
+<script src='{% static "/js/layui.js" %}' charset="utf-8"></script>
+
+<script>
+function getCookie(name) {
+        var cookie = document.cookie.match("\\b" + name + "=([^;]*)\\b");
+        return cookie ? cookie[1] : undefined
+    }
+</script>
+<script>
+    var user_id ={{ request.session.user_id }};
+    var domain_id =null;
+    var project_name ="{{ project_name }}";
+    var project_id = "{{ project_id }}";
+
+layui.use(['table','form','layer'], function(){
+  var table = layui.table;
+  var $ = layui.jquery;
+  var form = layui.form;
+  var layer = layui.layer;
+  table.render({
+    elem: '#domain'
+    ,defaultToolbar: ['filter','exports','print']
+    ,toolbar:"#toolbarDemo"
+    ,url:'/asset?type=json&asset_type=domain&domain=&project_id='+project_id+'&project_name='+project_name
+    ,cols: [[
+      {field:'id', width:80, title: 'ID', sort: true}
+      ,{field:'project_name', width:150, title: '项目名称'}
+      ,{field:'asset', width:150, title: '域名',sort:true}
+      ,{field:'source', width:100, title: '来源', sort: true}
+      ,{field:'source_detail', width:100, title: '来源详情', sort: true}
+      ,{field:'domain_type', width:150, title: '域名类型'}
+      ,{field:'cdn', title: 'CDN', width: 80}
+      ,{field:'function_status', width:380, title: '状态'}
+      ,{field:'whois_info', width:50, title: 'whois_info信息',hide:true}
+      ,{field:'extra_info', width:50, title: '域名情报',hide:true}
+      ,{field:'description', width:50, title: '备注',hide:true}
+      ,{field:'create_time', width:200, title: '创建时间', sort: true}
+      ,{fixed: 'right', title:'操作', toolbar: '#barDemo', width:650}
+    ]]
+    ,page: true
+    ,done:function(){
+        $("[data-field='source']").children().each(function(){
+            if ($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("程序添加")
+            }else if($(this).text() =="2" || $(this).text() ==2){
+                $(this).text("人工添加")
+            }
+        });
+        $("[data-field='domain_type']").children().each(function(){
+            if ($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("二级域名")
+            }else if($(this).text() =="2" || $(this).text() ==2){
+                $(this).text("其他域名")
+            }
+        });
+        $("[data-field='cdn']").children().each(function(){
+            if ($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("是")
+            }else if($(this).text() =="2" || $(this).text() ==2){
+                $(this).text("否")
+            }
+        });
+      }
+  });
+  var active ={
+      domain_search:function (){
+          var domain_search_input =$("#domain_search_input").val();
+          console.log("搜索的域名=="+domain_search_input);
+          table.reload('domain',{
+              url:"/asset?type=json&asset_type=domain&domain="+domain_search_input,
+              page:{
+                  curr:1
+              },
+          })
+      }
+  }
+  $("#domain_search").click(function (){
+         var type = $(this).data('type');
+    active[type] ? active[type].call(this) : '';
+  });
+  table.on('tool(domain)',function (obj){
+      var data = obj.data;
+      if (obj.event =="edit_domain"){
+          //域名修改
+          var id = data.id;
+          domain_id = id;
+          $("#update_domain_input").val(data.asset);
+          $("#update_domain_source").val(data.source);
+          $("#update_domain_type").val(data.domain_type);
+          var is_cdn =data.cdn;
+          var cdn_string =""
+          if (is_cdn =="1" || is_cdn ==1){
+              cdn_string+="<option value='1' selected>是</option><option value='2' >否</option>"
+          }else if (is_cdn =="2" || is_cdn ==2){
+              cdn_string+="<option value='1' >是</option><option value='2' selected>否</option>"
+          }
+          $("#update_domain_is_cdn").html(cdn_string);
+          $("#update_domain_whois_info").val(data.whois_info);
+          $("#update_domain_extra_info").val(data.extra_info);
+          $("#update_domain_description").val(data.description);
+          $("#update_domain_project_name").val(data.project_name);
+          $("#update_domain").css("display","block");
+          form.render();
+      }else if(obj.event =="edit_related_ip"){
+          //获取当前的域名和项目信息,然后重新查找数据
+          var domain_name = data.asset;
+          table.reload('ip',{
+              url:"/asset?type=json&asset_type=ip&project_id=&domain="+domain_name+"&ip=",
+              page:{
+                  curr:1
+              },
+          })
+          //查找域名的关联ip,设置样式
+          $("#online_domain_div").removeClass("layui-show");
+          $("#online_security_div").removeClass("layui-show");
+          $("#online_ip_div").addClass("layui-show");
+          $("#online_domain_li").removeClass("layui-this");
+          $("#online_ip_li").addClass("layui-this");
+          $("#online_security_li").removeClass("layui-this");
+
+
+
+
+
+      } else if (obj.event =="log_info"){
+          var project_name = data.project_name;
+          var asset_id =data.id;
+
+          $.ajax({
+                url:"/loginfo?asset_type=1&asset_id="+asset_id+"&project_name="+project_name,
+                type:"GET",
+                success:function(data){
+                    if (data.code =="0"){
+                        $("#log_info").val('');
+                        {#$("#log_info").val(data.info);#}
+                        var info = data.info;
+                        var p_string =""
+                        for(var i=0;i<info.length;i++){
+                            p_string+="<p class='log_info_p'>"+info[i]+"</>"
+                        }
+                        console.log(p_string);
+                        $("#log_info").html(p_string);
+                        $("#log_info_alert").css("display","block");
+                    }else if (data.code =="-1"){
+                        alert(data.info)
+                    }
+                }
+          });
+
+
+
+
+      }else if (obj.event =="add_process_info"){
+
+          $("#add_process_asset").val("");
+          $("#add_process_asset").val(data.asset);
+          $("#add_process_project_name").val("")
+          $("#add_process_project_name").val(data.project_name);
+          //请求用户接口
+          //获取所有的用户
+            $.ajax({
+                type:"GET",
+                url:"/user/?type=user&page=1",
+                traditional: true,
+                async: false,
+                headers:{
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                success:function (data){
+                    if (data.code =="0"){
+                        var user_data = data.data
+                        var user_string =""
+                        for(var i=0;i<user_data.length;i++){
+                            var one_user =user_data[i];
+                            var one_user_id = one_user.id;
+                            user_string+='<option value="'+one_user_id+'">'+one_user.name+'</option>'
+                        }
+                        $("#add_process_info_responser").html(user_string)
+                        form.render();
+                    }
+                }
+            });
+            $("#add_process_info_alert").css("display","block");
+
+      }else if (obj.event =="process_info_detail"){
+          var project_name = data.project_name;
+          var asset = data.asset;
+          window.parent.create_tabs("渗透信息","{{ path }}/process?type=html&project_name="+project_name+"&asset="+asset,4)
+      }else if(obj.event =="run"){
+          var domain_type = data.domain_type;
+          var domain = data.asset;
+          var id = data.id;
+          var project_name =data.project_name;
+          $.ajax({
+              url:"/run/",
+            type:"POST",
+            traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            data:{
+                  "asset_type":1,"ip_type":"","domain_type":domain_type,"domain":domain,"ip":"","asset_id":id,"service":"","srv_type":"","project_name":project_name
+            },
+            success:function (data){
+                  if (data.code =="0"){
+                      alert("域名运行按钮调用成功")
+                  }else if(data.code =="-1"){
+                      alert(data.msg);
+                  }
+            },
+              fail:function(data){
+                  alert(data.msg);
+              }
+          })
+
+      }else if (obj.event =="add_vuln"){
+          $("#add_vuln_info_alert").css("display","block");
+          $("#add_vuln_asset").val("");
+          $("#add_vuln_asset").val(data.asset);
+          $("#add_vuln_info_asset_type").html('<option value="1">domain</option>');
+          $("#add_vuln_project_name").val("");
+          $("#add_vuln_project_name").val(data.project_name);
+          $("#vuln_name").val("");
+          $("#vuln_affect").val("");
+          $("#vuln_details").val("");
+          $("#add_vuln_info_alert").css("display","block");
+
+
+      }else if(obj.event =="vuln_detail"){
+          var project_name = data.project_name;
+          var asset = data.asset;
+          var asset_type="1"
+          window.parent.create_tabs("漏洞信息","{{ path }}/vuln?type=html&project_name="+project_name+"&asset="+asset+"&asset_type="+asset_type,5);
+          //查看漏洞
+      }
+
+  });
+  $("#add_vuln_info_cancel").click(function(){
+     $("#add_vuln_info_alert").css("display","none");
+  });
+  //新增漏洞点击确认
+    $("#add_vuln_info_confirm").click(function (){
+        var asset = $("#add_vuln_asset").val();
+        var asset_type =$("#add_vuln_info_asset_type").val();
+        var project_name = $("#add_vuln_project_name").val();
+        var vuln_name = $("#vuln_name").val();
+        var vuln_level = $("#vuln_level").val();
+        var vuln_affect = $("#vuln_affect").val();
+        var vuln_details = $("#vuln_details").val();
+        $.ajax({
+            url:"/vuln/",
+            type:"POST",
+            traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            data:{
+                asset:asset,
+                asset_type:asset_type,
+                project_name:project_name,
+                vuln_name:vuln_name,
+                vuln_level:vuln_level,
+                vuln_affect:vuln_affect,
+                vuln_details:vuln_details,
+                request_type:"add",
+                user_id:user_id
+            },
+            success:function (data){
+                if (data.code =="0"){
+                    alert("新增漏洞成功");
+                    $("#add_vuln_info_alert").css("display","none");
+                    window.location.reload();
+                }else if(data.code =="-1"){
+                    $("#add_vuln_info_alert").css("display","none");
+                }
+            },fail:function (data){
+                alert(data.msg);
+                $("#add_vuln_info_alert").css("display","none");
+            }
+        })
+    });
+    //新增渗透信息确认
+    $("#add_process_info_confirm").click(function (){
+        var asset = $("#add_process_asset").val();
+        //1是domain 2是ip
+        var project_name =$("#add_process_project_name").val();
+        var info_content =$("#info_content").val();
+        var info_level = $("#info_level").val();
+        var responser = $("#add_process_info_responser").val(); //负责人
+        $.ajax({
+            url:"/process/",
+            type:"POST",
+            traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            data:{
+                asset:asset,
+                project_name:project_name,
+                info_content:info_content,
+                info_level:info_level,
+                responser:responser,
+                user_id:user_id,
+                request_type:"add"
+            },
+            success:function (data){
+                if (data.code =="0"){
+                    alert("新增渗透信息成功");
+                    $("#add_process_info_alert").css("display","none");
+                    window.location.reload();
+                }else if(data.code =="-1"){
+                    $("#add_process_info_alert").css("display","none");
+                }
+            },fail:function (data){
+                alert(data.msg);
+                $("#add_process_info_alert").css("display","none");
+            }
+        })
+    });
+    $("#add_process_info_cancel").click(function (){
+        $("#add_process_info_alert").css("display","none");
+    })
+    //取消显示log_info面板
+$("#log_info_cancel").click(function (){
+    $("#log_info_alert").css("display","none");
+});
+$("#update_domain_cancel").click(function (){
+    $("#update_domain").css("display","none")
+});
+//新增域名
+$("#add_domain_button").click(function (){
+    $("#add_domain").css("display","block");
+    $("#add_domain_input").val("");
+    $("#add_domain_project_name").val("");
+    $("#add_domain_source_detail").val("");
+    $("#add_domain_description").val("");
+});
+//新增域名确认按钮
+$("#add_domain_confirm").click(function (){
+    var domain_name = $("#add_domain_input").val();
+    var domain_type = $("#add_domain_type").val();
+    var project_name =$("#add_domain_project_name").val();
+    var source_detail =$("#add_domain_source_detail").val();
+    var description =$("#add_domain_description").val();
+    $.ajax({
+        type:"POST",
+        url:"/domain/",
+        traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+        data:{
+            "domain_name":domain_name,
+            "domain_type":domain_type,
+            "project_name":project_name,
+            "source_detail":source_detail,
+            "description":description,
+            "user_id":user_id,
+            "request_type":"add"
+        },
+        success:function (data){
+            if (data.code =="0"){
+                alert("新增域名成功");
+                $("#add_domain").css("display","none");
+                window.location.reload();
+            }else if (data.code =="-1"){
+                var msg = data.msg || "";
+                alert(msg);
+                $("#add_domain").css("display","none");
+            }
+        },
+        fail:function (data){
+            alert(data.msg);
+            $("#add_domain").css("display","none");
+        }
+    })
+
+});
+$("#add_domain_cancel").click(function () {
+    $("#add_domain").css("display","none");
+});
+//修改域名确认
+$("#update_domain_confirm").click(function (){
+    var domain_name =$("#update_domain_input").val();
+    var source  =$("#update_domain_source").val();
+    var domain_type =$("#update_domain_type").val();
+    var is_cdn = $("#update_domain_is_cdn").val();
+    var whois_info =$("#update_domain_whois_info").val();
+    var extra_info =$("#update_domain_extra_info").val();
+    var description =$("#update_domain_description").val();
+    var project_name = $("#update_domain_project_name").val();
+    $.ajax({
+        type:"POST",
+        url:"/domain/",
+        traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+        data:{
+            "request_type":"modify",
+            "domain_name":domain_name,
+            "domain_type":domain_type,
+            "source":source,
+            "is_cdn":is_cdn,
+            "whois_info":whois_info,
+            "extra_info":extra_info,
+            "description":description,
+            "domain_id":domain_id,
+            "project_name":project_name
+        },
+        success:function (data){
+            if (data.code =="0"){
+                alert("修改域名成功");
+                $("#update_domain").css("display","none");
+            }else if(data.code =="-1"){
+                $("#update_domain").css("display","none");
+            }
+        },
+        fail:function (data){
+            alert(data.msg);
+            $("#update_domain").css("display","none")
+        }
+    });
+
+});
+});
+
+</script>
+<script>
+    var user_id ={{ request.session.user_id }};
+    var project_id ="{{ project_id }}";
+    var project_name ="{{ project_name }}";
+layui.use(['table','form'], function(){
+  var table = layui.table;
+  var $ = layui.jquery;
+  var form = layui.form;
+  table.render({
+    elem: '#ip'
+    ,defaultToolbar: ['filter','exports','print']
+    ,toolbar:"#toolbarDemo"
+    ,url:'/asset?type=json&asset_type=ip&ip=&domain=&project_id='+project_id+'&project_name='+project_name
+    ,cols: [[
+      {field:'id', width:80, title: 'ID', sort: true}
+      ,{field:'project_name', width:150, title: '项目名称'}
+      ,{field:'ip', width:150, title: 'ip'}
+      ,{field:'source', width:100, title: '来源'}
+      ,{field:'source_detail', width:150, title: '来源详情'}
+      ,{field:'ip_type', width:100, title: 'ip类型'}
+      ,{field:'is_belongs_to', width:100, title: '是否属于目标方',hide:true}
+      ,{field:'extra_info', width:80, title: 'ip情报',hide:true}
+      ,{field:'rdns_history', width:80, title: '方向解析历史',hide:true}
+      ,{field:'description', width:80, title: '备注',hide:true}
+      ,{field:'asset', title: '关联资产', width: 250}
+      ,{field:'ip_location', width:150, title: 'ip地理位置'}
+      ,{field:'org', width:150, title: '组织出口'}
+      ,{field:'function_status', width:380, title: '状态', sort: true}
+      ,{field:'create_time', width:250, title: '创建时间'}
+      ,{fixed: 'right', title:'操作', toolbar: '#ipBarDemo', width:850}
+    ]]
+    ,page: true
+      ,done:function(){
+        $("[data-field='source']").children().each(function(){
+            if ($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("程序添加")
+            }else if($(this).text() =="2" || $(this).text() ==2){
+                $(this).text("人工添加")
+            }
+        });
+        $("[data-field='ip_type']").children().each(function(){
+            if ($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("真实IP")
+            }else if($(this).text() =="4" || $(this).text() ==4){
+                $(this).text("C段IP")
+            }
+        });
+        $("[data-field='cdn']").children().each(function(){
+            if ($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("是")
+            }else if($(this).text() =="2" || $(this).text() ==2){
+                $(this).text("否")
+            }
+        });
+      }
+  });
+  var active ={
+      ip_search:function (){
+          var asset_ip_search =$("#asset_ip_search").val();
+          var asset_domain_search=$("#asset_domain_search").val();
+          console.log("ip tab 搜索的域名=="+asset_domain_search);
+          console.log("ip tab 搜索的ip=="+asset_ip_search);
+          table.reload('ip',{
+              url:"/asset?type=json&asset_type=ip&project_id=&domain="+asset_domain_search+"&ip="+asset_ip_search,
+              page:{
+                  curr:1
+              },
+          })
+      }
+  }
+  $("#ip_search").click(function (){
+         var type = $(this).data('type');
+    active[type] ? active[type].call(this) : '';
+  });
+  table.on('tool(ip)',function (obj){
+      var data = obj.data;
+      if (obj.event =="edit_ip"){
+          //域名修改
+          var id = data.id;
+          domain_id = id;
+          $("#update_ip_ip").val(data.ip);//ip
+          $("#update_ip_related_domain").val(data.asset); //关联资产
+          $("#update_ip_ip_type").val(data.ip_type); //ip类型
+          $("#update_ip_ip_location").val(data.ip_location); //ip地理位置
+          $("#update_ip_org").val(data.org); //组织出口
+          $("#update_ip_is_belongs_to").val(data.is_belongs_to); //是否属于目标方
+          $("#update_ip_extra_info").val(data.extra_info);
+          $("#update_ip_rdns_history").val(data.rdns_history);
+          $("#update_ip_description").val(data.description);
+          $("#update_ip_project_name").val(data.project_name);
+          $("#update_ip").css("display","block");
+          form.render();
+      }else if(obj.event =="server"){
+          //点击开放端口
+          var asset = data.ip;
+          var project_name = data.project_name;
+          window.parent.create_tabs("端口信息","{{ path }}/service?request_type=html&project_name="+project_name+"&asset="+asset,6);
+
+
+      }  else if (obj.event =="log_info"){
+          //点击log_info按钮
+          var project_name = data.project_name;
+          var asset_id =data.id;
+
+          $.ajax({
+                url:"/loginfo?asset_type=2&asset_id="+asset_id+"&project_name="+project_name,
+                type:"GET",
+                success:function(data){
+                    if (data.code =="0"){
+                        $("#log_info").val('');
+                        var info = data.info;
+                        var p_string =""
+                        for(var i=0;i<info.length;i++){
+                            p_string+="<p class='log_info_p'>"+info[i]+"</>"
+                        }
+                        console.log(p_string)
+                        $("#log_info").html(p_string);
+                        $("#log_info_alert").css("display","block");
+                    }else if (data.code =="-1"){
+                        alert(data.info)
+                    }
+                }
+          });
+
+
+      }else if (obj.event =="add_process_info"){
+            //点击新增渗透信息按钮
+          $("#add_process_asset").val("");
+          $("#add_process_asset").val(data.asset);
+          $("#add_process_project_name").val("");
+          $("#add_process_project_name").val(data.project_name);
+          //获取所有的用户
+            $.ajax({
+                type:"GET",
+                url:"/user/?type=user&page=1",
+                traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+                success:function (data){
+                    if (data.code =="0"){
+                        var user_data = data.data
+                        var user_string =""
+                        for(var i=0;i<user_data.length;i++){
+                            var one_user =user_data[i];
+                            var one_user_id = one_user.id;
+                            user_string+='<option value="'+one_user_id+'">'+one_user.name+'</option>'
+                        }
+                        $("#add_process_info_responser").html(user_string)
+                        form.render();
+                    }
+                }
+            });
+          $("#add_process_info_alert").css("display","block");
+
+      }else if (obj.event =="process_info_detail"){
+          //点击渗透信息详情
+          var project_name = data.project_name;
+          var asset = data.asset;
+          if (asset =="" || asset ==undefined || asset ==null){
+              asset = data.ip;
+          }
+          window.parent.create_tabs("渗透信息","{{ path }}/process?type=html&project_name="+project_name+"&asset="+asset,4)
+      }else if(obj.event =="run"){
+          var ip_type = data.ip_type;
+          var ip = data.ip;
+          var id = data.id;
+          var project_name = data.project_name;
+          $.ajax({
+              url:"/run/",
+            type:"POST",
+            traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            data:{
+                  "asset_type":2,"ip_type":ip_type,"domain_type":"","domain":"","ip":ip,"asset_id":id,"service":"","srv_type":"","project_name":project_name
+            },
+            success:function (data){
+                  if (data.code =="0"){
+                      alert("域名运行按钮调用成功")
+                  }else if(data.code =="-1"){
+                      alert(data.msg);
+                  }
+            },
+              fail:function(data){
+                  alert(data.msg);
+              }
+          })
+
+      }else if (obj.event =="add_vuln"){
+          //点击新增漏洞按钮
+
+          $("#add_vuln_asset").val("");
+          $("#add_vuln_asset").val(data.asset);
+          $("#add_vuln_info_asset_type").html('');
+          $("#add_vuln_info_asset_type").html('<option value="2">IP</option>');
+          $("#add_vuln_project_name").val("");
+          $("#add_vuln_project_name").val(data.project_name);
+          $("#vuln_name").val("");
+          $("#vuln_affect").val("");
+          $("#vuln_details").val("");
+          $("#add_vuln_info_alert").css("display","block");
+
+
+      }else if(obj.event =="vuln_detail"){
+          //点击查看漏洞按钮
+          var project_name = data.project_name;
+          var asset = data.asset;
+          var asset_type="2";
+          window.parent.create_tabs("漏洞信息","{{ path }}/vuln?type=html&project_name="+project_name+"&asset="+asset+"&asset_type="+asset_type,5);
+      }else if (obj.event =="side_stations"){
+          var project_name = data.project_name;
+          var ip = data.ip;
+          var id = data.id
+          //点击旁站按钮
+          $.ajax({
+                type:"POST",
+                url:"/sidestations/",
+                traditional: true,
+                async: false,
+                headers:{
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                data:{
+                    "project_name":project_name,
+                    "asset_id":id,
+                    "asset":ip
+                },
+                success:function (data){
+                    if (data.code =="0"){
+                        var user_data = data.data
+                        var tbody_string =""
+                        for (var i=0;i<user_data.length;i++){
+                            var one_data = user_data[i];
+                            var format_string ='<tr><td>'+one_data["host"]+'</td><td>'+one_data["title"]+'</td><td>'+one_data["create_time"]+'</td></tr>'
+                            tbody_string+=format_string;
+
+                        }
+                        $("#side_station_tbody").append(tbody_string);
+                        $("#side_stations_alert").css("display","block");
+
+                    }else if (data.code =="-1"){
+                        alert(data.msg);
+                    }
+                }
+            });
+      }
+
+  });
+  $("#update_ip_confirm").click(function (){
+    var ip=$("#update_ip_ip").val();//ip
+    var asset =$("#update_ip_related_domain").val(); //关联资产
+    var ip_type=$("#update_ip_ip_type").val(); //ip类型
+    var ip_location =$("#update_ip_ip_location").val(); //ip地理位置
+    var org =$("#update_ip_org").val(); //组织出口
+    var is_belongs_to =$("#update_ip_is_belongs_to").val(); //是否属于目标方
+    var extra_info =$("#update_ip_extra_info").val();
+    var rdns_history =$("#update_ip_rdns_history").val();
+    var description =$("#update_ip_description").val();
+    var project_name =$("#update_ip_project_name").val();
+    $.ajax({
+              type:"POST",
+              url:"/ip/",
+        traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+              data:{
+                  "ip":ip,
+                  "asset":asset,
+                  "ip_type":ip_type,
+                  "ip_location":ip_location,
+                  "org":org,
+                  "is_belongs_to":is_belongs_to,
+                  "extra_info":extra_info,
+                  "rdns_history":rdns_history,
+                  "description":description,
+                  "request_type":"modify",
+                  "project_name":project_name
+              },
+              success:function (data){
+                    if (data.code =="0"){
+                        alert("修改IP成功");
+                        $("#update_ip").css("display","none");
+                    }else if(data.code =="-1"){
+                        $("#update_ip").css("display","none");
+                    }
+              },
+            fail:function (data){
+                alert(data.msg);
+                $("#update_ip").css("display","none");
+            }
+          })
+});
+$("#update_ip_cancel").click(function (){
+    $("#update_ip").css("display","none");
+});
+$("#add_ip_button").click(function (){
+    $("#add_ip_value").val("");
+    $("#add_ip_related_ip").val("");
+    $("#add_ip_related_domain").val("");
+    $("#add_ip_project_name").val("");
+    $("#add_ip_source_detail").val("");
+    $("#add_ip_description").val("");
+    $("#add_ip").css("display","block");
+
+});
+//确认提交ip
+$("#add_ip_confirm").click(function (){
+    var ip_value = $("#add_ip_value").val();
+    var ip_related_domain = $("#add_ip_related_domain").val();
+    var ip_related_ip = $("#add_ip_related_ip").val();
+    var source_detail = $("#source_detail").val();
+    var description = $("#add_ip_description").val();
+    var ip_type = $("#add_ip_type").val();
+    var project_name =$("#add_ip_project_name").val();
+    $.ajax({
+        type:"POST",
+        url:"/ip/",
+        traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+        data:{
+            "ip":ip_value,
+            "domain":ip_related_domain,
+            "related_ip":ip_related_ip,
+            "source_detail":source_detail,
+            "description":description,
+            "request_type":"add",
+            "ip_type":ip_type,
+            "project_name":project_name
+
+        },
+        success:function (data){
+            if (data.code =="0"){
+                alert("新增IP成功");
+                $("#add_ip").css("display","none");
+                window.location.reload();
+            }else if(data.code =="-1"){
+                $("#add_ip").css("display","none");
+            }
+
+        },
+        fail:function (data){
+            alert(data.msg);
+            $("#add_ip").css("display","none");
+        }
+    })
+});
+$("#add_ip_cancel").click(function (){
+    $("#add_ip").css("display","none");
+});
+
+});
+
+</script>
+<script>
+    var user_id ={{ request.session.user_id }};
+layui.use(['table','form'], function(){
+  var table = layui.table;
+  var form = layui.form;
+  var $ =layui.jquery;
+  table.render({
+    elem: '#security'
+    ,defaultToolbar: ['filter','exports','print']
+    ,toolbar:"#toolbarDemo"
+    ,url:'/asset?type=json&asset_type=security'
+    ,cols: [[
+      {field:'id', width:150, title: 'ID', sort: true}
+      ,{field:'security_name', width:200, title: '设备名称'}
+      ,{field:'source', width:100, title: '来源', sort: true}
+      ,{field:'company', width:200, title: '所属公司'}
+      ,{field:'source_detail', width:350, title: '来源详情',hide:true}
+      ,{field:'description', width:350, title: '备注',hide:true}
+      ,{field:'create_time', title: '创建时间', width: 350}
+      ,{fixed: 'right', title:'操作', toolbar: '#SecurityBarDemo', width:650}
+    ]]
+    ,page: true
+    ,done:function (res,curr,count){
+        $("[data-field='source']").children().each(function(){
+            if ($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("程序添加")
+            }else if($(this).text() =="2" || $(this).text() ==2){
+                $(this).text("人工添加")
+            }
+        });
+
+      }
+  });
+  table.on('tool(security)',function (obj) {
+      var data = obj.data;
+      if (obj.event == "edit") {
+            $("#update_security_security_name").val(data.security_name);
+            $("#update_security_company").val(data.company);
+            var source = data.source;
+            var source_string =""
+            if (source =="1" || source ==1){
+                source_string+='<option value="1" selected>程序添加</option><option value="2" >人工添加</option>'
+            }else if (source =="2" || source ==2){
+                source_string+='<option value="1" >程序添加</option><option value="2" selected>人工添加</option>'
+            }
+            $("#update_security_source").html(source_string);
+            $("#update_security_source_detail").val(data.source_detail);
+            $("#aupdate_security_source_description").val(data.description);
+            $("#update_security").css("display","block");
+            form.render();
+      }
+  });
+  $("#update_security_cancel").click(function (){
+      $("#update_security").css("display","none");
+  });
+  $("#update_security_confirm").click(function (){
+      var security_name = $("#update_security_security_name").val();
+      var company = $("#update_security_company").val();
+      var source = $("#update_security_source").val();
+      var source_detail = $("#update_security_source_detail").val();
+      var description = $("#aupdate_security_source_description").val();
+      $.ajax({
+          url:"/security/",
+          type:"POST",
+          traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+          data:{
+            "security_name":security_name,
+            "company":company,
+            "source_detail":source_detail,
+            "description":description,
+             "source":source,
+            "request_type":"modify"
+        }
+        ,success:function (data){
+            if (data.code =="0"){
+                alert("修改安全设备成功");
+                $("#update_security").css("display","none");
+            }else if(data.code =="-1"){
+                $("#update_security").css("display","none");
+            }
+        },
+        fail:function (data){
+            alert(data.msg);
+            $("#update_security").css("display","none");
+        }
+      });
+  });
+  $("#add_security_button").click(function (){
+    $("#add_security").css("display","block");
+});
+//点击确认新增设备按钮
+$("#add_security_confirm").click(function (){
+    var security_name = $("#add_security_security_name").val();
+    var company = $("#add_security_company").val();
+    var project_name = $("#add_security_project_name").val();
+    var source_detail = $("#add_security_source_detail").val();
+    var description = $("#add_security_source_description").val();
+    $.ajax({
+        url:"/security/",
+        type:"POST",
+        traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+        data:{
+            "security_name":security_name,
+            "company":company,
+            "project_name":project_name,
+            "source_detail":source_detail,
+            "description":description,
+            "request_type":"add"
+        }
+        ,success:function (data){
+            if (data.code =="0"){
+                alert("新增安全设备成功");
+                $("#add_security").css("display","none");
+                window.location.reload();
+            }
+        },
+        fail:function (data){
+            alert(data.msg);
+            $("#add_security").css("display","none");
+        }
+    })
+
+});
+$("#add_security_cancel").click(function (){
+    $("#add_security").css("display","none");
+});
+$("#side_stations_cancel").click(function (){
+    $("#side_station_tbody").empty();
+    $("#side_stations_alert").css("display","none");
+});
+});
+
+
+</script>
+<!--新增域名 -->
+<div class="marmo_alert" id="add_domain">
+    <div class="marmo_container">
+        <div class="layui-form-item">
+            <label class="layui-form-label">新增域名:</label>
+            <div class="layui-input-block">
+              <input type="text" name="add_domain_input" id="add_domain_input" lay-verify="title" autocomplete="off" placeholder="请输入新增域名" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">类型:</label>
+                <div class="layui-input-block">
+                  <select name="add_domain_type" id="add_domain_type" lay-filter="aihao" class="sel_mask">
+                    <option value="1">主域</option>
+                    <option value="2">其他</option>
+                  </select>
+                </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">项目名称:</label>
+            <div class="layui-input-block">
+              <input type="text" name="add_domain_project_name" id="add_domain_project_name" lay-verify="title" autocomplete="off" placeholder="请输入来源信息" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">来源信息:</label>
+            <div class="layui-input-block">
+              <input type="text" name="add_domain_source_detail" id="add_domain_source_detail" lay-verify="title" autocomplete="off" placeholder="请输入来源信息" class="layui-input">
+            </div>
+        </div>
+
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注:</label>
+            <div class="layui-input-block">
+              <input type="text" name="add_domain_description" id="add_domain_description" lay-verify="title" autocomplete="off" placeholder="请输入备注信息" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_domain_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_domain_cancel">取消</button>
+                </div>
+        </div>
+    </div>
+</div>
+
+<!--新增ip -->
+<div class="marmo_alert" id="add_ip">
+    <div class="marmo_container">
+        <div class="layui-form-item">
+            <label class="layui-form-label">新增ip:</label>
+            <div class="layui-input-block">
+              <input type="text" name="add_ip_value" id="add_ip_value" lay-verify="title" autocomplete="off" placeholder="请输入ip值" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">类型:</label>
+                <div class="layui-input-block">
+                  <select name="add_ip_type" id="add_ip_type" lay-filter="aihao" class="sel_mask">
+                    <option value="1">真实ip</option>
+                    <option value="4">C段ip</option>
+                  </select>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">关联域名:</label>
+                <div class="layui-input-block">
+                  <input type="text" name="add_ip_related_domain" id="add_ip_related_domain" lay-verify="title" autocomplete="off" placeholder="请输入ip值" class="layui-input">
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">关联ip:</label>
+                <div class="layui-input-block">
+                    <input type="text" name="add_ip_related_ip" id="add_ip_related_ip" lay-verify="title" autocomplete="off" placeholder="请输入ip值" class="layui-input">
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">项目名称:</label>
+                <div class="layui-input-block">
+                    <input type="text" name="add_ip_project_name" id="add_ip_project_name" lay-verify="title" autocomplete="off" placeholder="请输入ip值" class="layui-input">
+                </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">来源详情:</label>
+            <div class="layui-input-block">
+              <input type="text" name="add_ip_source_detail" id="add_ip_source_detail" lay-verify="title" autocomplete="off" placeholder="请输入来源信息" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注:</label>
+            <div class="layui-input-block">
+              <input type="text" name="add_ip_description" id="add_ip_description" lay-verify="title" autocomplete="off" placeholder="请输入备注信息" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_ip_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_ip_cancel">取消</button>
+                </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- 新增安全设备 -->
+<div class="marmo_alert" id="add_security">
+    <div class="marmo_container">
+        <div class="layui-form-item">
+            <label class="layui-form-label">设备名称:</label>
+            <div class="layui-input-block">
+              <input type="text" name="add_security_security_name" id="add_security_security_name" lay-verify="title" autocomplete="off" placeholder="请输入设备名称" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">所属公司:</label>
+            <div class="layui-input-block">
+              <input type="text" name="add_security_company" id="add_security_company" lay-verify="title" autocomplete="off" placeholder="请输入所属公司" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">项目名称:</label>
+            <div class="layui-input-block">
+              <input type="text" name="add_security_project_name" id="add_security_project_name" lay-verify="title" autocomplete="off" placeholder="请输入所属公司" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">来源详情:</label>
+            <div class="layui-input-block">
+              <textarea name="add_security_source_detail" id="add_security_source_detail" lay-verify="title" autocomplete="off"  class="layui-input"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">描述:</label>
+            <div class="layui-input-block">
+              <textarea name="add_security_source_description" id="add_security_source_description" lay-verify="title" autocomplete="off"  class="layui-input"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_security_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_security_cancel">取消</button>
+                </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- 修改域名 -->
+<div class="marmo_alert" id="update_domain">
+    <div class="marmo_container">
+        <div class="layui-form-item" style="display: none">
+            <label class="layui-form-label">项目名称:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_domain_project_name" id="update_domain_project_name" lay-verify="title" autocomplete="off" placeholder="请输入项目名称" class="layui-input" disabled>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">域名:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_domain_input" id="update_domain_input" lay-verify="title" autocomplete="off" placeholder="请输入ip" class="layui-input" disabled>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">来源:</label>
+            <input type="text" name="update_domain_source" id="update_domain_source" lay-verify="title" autocomplete="off" disabled class="layui-input">
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">域名类型:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_domain_type" id="update_domain_type" disabled lay-verify="title" autocomplete="off"  class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">cdn:</label>
+            <select name="update_domain_is_cdn" id="update_domain_is_cdn" lay-filter="aihao" class="sel_mask">
+
+            </select>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">whois_info信息:</label>
+            <div class="layui-input-block">
+                <textarea  name="update_domain_whois_info" id="update_domain_whois_info" lay-verify="title" autocomplete="off"  class="layui-input"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">域名情报:</label>
+                <div class="layui-input-block">
+                    <textarea  class="layui-textarea" name="update_domain_extra_info" id="update_domain_extra_info"></textarea>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">备注:</label>
+                <div class="layui-input-block">
+                    <textarea placeholder="请输入备注信息" class="layui-textarea" name="update_domain_description" id="update_domain_description"></textarea>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="update_domain_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="update_domain_cancel">取消</button>
+                </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- 修改ip -->
+<div class="marmo_alert" id="update_ip">
+    <div class="marmo_container">
+        <div class="layui-form-item" style="display: none">
+            <label class="layui-form-label">项目名:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_ip_project_name" id="update_ip_project_name" lay-verify="title" autocomplete="off" placeholder="请输入ip" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">ip:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_ip_ip" id="update_ip_ip" lay-verify="title" autocomplete="off" placeholder="请输入ip" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">关联域名:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_ip_related_domain" id="update_ip_related_domain" lay-verify="title" autocomplete="off" placeholder="请输入关联域名" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">ip类型:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_ip_ip_type" id="update_ip_ip_type" lay-verify="title" autocomplete="off" placeholder="请输入IP类型" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">地理位置:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_ip_ip_location" id="update_ip_ip_location" lay-verify="title" autocomplete="off" placeholder="请输入IP地理位置" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">组织出口:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_ip_org" id="update_ip_org" lay-verify="title" autocomplete="off" placeholder="请输入IP地理位置" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">ip是否属于目标方:</label>
+                <div class="layui-input-block">
+                  <select name="update_ip_is_belongs_to" lay-filter="aihao" id="update_ip_is_belongs_to" class="sel_mask">
+                    <option value="0">否</option>
+                    <option value="1">是</option>
+                  </select>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">ip情报:</label>
+                <div class="layui-input-block">
+                    <textarea placeholder="ip情报" class="layui-textarea" name="update_ip_extra_info" id="update_ip_extra_info"></textarea>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">反向解析历史:</label>
+                <div class="layui-input-block">
+                    <textarea placeholder="请输入反向解析历史" class="layui-textarea" name="update_ip_rdns_history" id="update_ip_rdns_history"></textarea>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">备注:</label>
+                <div class="layui-input-block">
+                    <textarea placeholder="请输入备注信息" class="layui-textarea" name="update_ip_description" id="update_ip_description"></textarea>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="update_ip_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="update_ip_cancel">取消</button>
+                </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- 修改安全设备 -->
+<div class="marmo_alert" id="update_security">
+    <div class="marmo_container">
+        <div class="layui-form-item">
+            <label class="layui-form-label">设备名称:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_security_security_name" id="update_security_security_name" lay-verify="title" autocomplete="off" placeholder="请输入设备名称" class="layui-input" disabled>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">所属公司:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_security_company" id="update_security_company" lay-verify="title" autocomplete="off" placeholder="请输入所属公司" class="layui-input" disabled>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">来源:</label>
+            <div class="layui-input-block">
+                <select name="update_security_source" lay-filter="aihao" id="update_security_source" class="sel_mask"></select></div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">来源详情:</label>
+            <div class="layui-input-block">
+              <textarea name="update_security_source_detail" id="update_security_source_detail" lay-verify="title" autocomplete="off"  class="layui-input"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">描述:</label>
+            <div class="layui-input-block">
+              <textarea name="update_security_source_description" id="aupdate_security_source_description" lay-verify="title" autocomplete="off"  class="layui-input"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="update_security_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="update_security_cancel">取消</button>
+                </div>
+        </div>
+    </div>
+</div>
+
+
+<!--  显示loginfo-->
+<div class="marmo_alert" id="log_info_alert">
+    <div class="marmo_container">
+        <div class="layui-form-item" style="height: 100%">
+                <div class="layui-input-block" style="height: 100%;background-color: #fff" id="log_info">
+{#                  <textarea id="log_info" lay-verify="title" autocomplete="off"  class="layui-input" style="height: 100%"></textarea>#}
+                </div>
+            </div>
+        <div class="layui-form-item">
+                    <div class="layui-input-block">
+                      <button type="button" class="log_info_cancel" id="log_info_cancel">取消</button>
+                    </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- 新增渗透信息 区分是域名的渗透信息还是ip的渗透信息-->
+<div class="marmo_alert" id="add_process_info_alert">
+    <div class="marmo_container">
+        <div class="layui-form-item" style="display: none">
+            <label class="layui-form-label">关联资产:</label>
+            <div class="layui-input-block">
+              <input type="text" name="add_process_asset" id="add_process_asset" lay-verify="title" autocomplete="off"  class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item" style="display: none">
+                <label class="layui-form-label">项目名称:</label>
+                <div class="layui-input-block">
+                  <input type="text" name="add_process_project_name" id="add_process_project_name" lay-verify="title" autocomplete="off"  class="layui-input">
+                </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">渗透信息:</label>
+            <div class="layui-input-block">
+              <input type="text" name="process_info" id="info_content" lay-verify="title" autocomplete="off" placeholder="请输入渗透信息" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">信息重要性:</label>
+                <div class="layui-input-block">
+                  <select name="info_level" id="info_level" lay-filter="aihao" class="sel_mask">
+                    <option value="1">低</option>
+                    <option value="2">中</option>
+                    <option value="3">高</option>
+                  </select>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">关联人:</label>
+                <div class="layui-input-block">
+                  <select name="add_process_info_responser" id="add_process_info_responser" lay-filter="aihao" class="sel_mask">
+
+                  </select>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_process_info_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_process_info_cancel">取消</button>
+                </div>
+        </div>
+    </div>
+
+
+</div>
+
+<!-- 新增漏洞  要区分出漏洞是ip的还是域名的-->
+<div class="marmo_alert" id="add_vuln_info_alert">
+    <div class="marmo_container">
+        <div class="layui-form-item" style="display: none">
+            <label class="layui-form-label">关联资产:</label>
+            <div class="layui-input-block">
+              <input type="text" name="add_vuln_asset" id="add_vuln_asset" lay-verify="title" autocomplete="off"  class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item" style="display: none">
+                <label class="layui-form-label">资产类型:</label>
+                <div class="layui-input-block">
+                  <select name="add_vuln_info_asset_type" id="add_vuln_info_asset_type" lay-filter="aihao" class="sel_mask">
+
+                  </select>
+                </div>
+        </div>
+        <div class="layui-form-item" style="display: none">
+                <label class="layui-form-label">关联项目:</label>
+                <div class="layui-input-block">
+                  <input type="text" name="add_vuln_project_name" id="add_vuln_project_name" lay-verify="title" autocomplete="off"  class="layui-input">
+                </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">漏洞名称:</label>
+            <div class="layui-input-block">
+              <input type="text" name="vuln_name" id="vuln_name" lay-verify="title" autocomplete="off" placeholder="请输入漏洞名称" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">漏洞评级:</label>
+                <div class="layui-input-block">
+                  <select name="vuln_level" id="vuln_level" lay-filter="aihao" class="sel_mask">
+                    <option value="1">高</option>
+                    <option value="1">中</option>
+                    <option value="1">低</option>
+                  </select>
+                </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">漏洞影响:</label>
+            <div class="layui-input-block">
+              <textarea placeholder="漏洞影响" class="layui-textarea" name="vuln_affect" id="vuln_affect"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">漏洞详情&复现:</label>
+            <div class="layui-input-block">
+              <textarea placeholder="漏洞详情&复现" class="layui-textarea" name="vuln_details" id="vuln_details"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_vuln_info_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_vuln_info_cancel">取消</button>
+                </div>
+        </div>
+    </div>
+
+</div>
+<div class="marmo_alert" id="side_stations_alert">
+    <div class="marmo_container">
+        <table class="layui-table">
+          <colgroup>
+            <col width="250">
+            <col width="350">
+            <col width="180">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>域名</th>
+              <th>title</th>
+              <th>创建时间</th>
+            </tr>
+          </thead>
+          <tbody id="side_station_tbody">
+
+          </tbody>
+        </table>
+        <div class="layui-form-item">
+                    <div class="layui-input-block">
+                      <button type="button" class="layui-btn layui-btn-normal" id="side_stations_cancel">取消</button>
+                    </div>
+        </div>
+    </div>
+
+</div>
+
+
+
+
+</body>
+</html>

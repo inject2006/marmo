@@ -1,0 +1,255 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>漏洞管理</title>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="stylesheet" href='{% static "/css/layui.css" %}'  media="all"/>
+    <link rel="stylesheet" href={% static  "/css/marmo.css" %}  media="all"/>
+</head>
+<body>
+
+<table class="layui-hide" id="vuln_info" lay-filter="vuln_info"></table>
+<script type="text/html" id="vuln_bar">
+  <a class="layui-btn layui-btn-xs" lay-event="edit">查看&修改</a>
+</script>
+<script type="text/html" id="toolbarDemo">
+    <div class="layui-btn-container"></div>
+</script>
+<script src='{% static "/js/layui.js" %}' charset="utf-8"></script>
+
+<script>
+      function getCookie(name) {
+        var cookie = document.cookie.match("\\b" + name + "=([^;]*)\\b");
+        return cookie ? cookie[1] : undefined
+    };
+    var user_id ="{{ request.session.user_id }}";
+    var project_name ="{{ project_name }}";
+    var asset ="{{ asset }}";
+    var asset_type="{{ asset_type }}";
+layui.use(['table','form'], function(){
+  var table = layui.table;
+  var $ = layui.jquery;
+  var form=layui.form;
+  table.render({
+    elem: '#vuln_info'
+    ,defaultToolbar: ['filter','exports','print']
+    ,toolbar:"#toolbarDemo"
+    ,url:'/vuln?type=json&project_name={{ project_name }}&asset={{ asset }}&asset_type={{ asset_type }}&user_id={{ request.session.user_id }}'
+    ,cols: [[
+      {field:'id', width:80, title: 'ID', sort: true}
+      ,{field:'project_name', width:250, title: '项目名称'}
+      ,{field:'vuln_name', width:250, title: '漏洞名称'}
+      ,{field:'asset', width:250, title: '关联资产', sort: true}
+      ,{field:'create_user', width:250, title: '创建人'}
+      ,{field:'vuln_level', title: '漏洞评级', width: 150}
+      ,{field:'create_time', width:250, title: '创建时间', sort: true}
+      ,{field:'vuln_status', width:150, title: '漏洞状态', sort: true}
+      ,{field:'is_retest', width:150, title: '是否复测'}
+      ,{fixed: 'right', title:'操作', toolbar: '#vuln_bar', width:250}
+    ]]
+    ,page: true
+      ,done:function(){
+        $("[data-field='vuln_level']").children().each(function(){
+            if ($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("高");
+            }else if($(this).text() =="2" || $(this).text() ==2){
+                $(this).text("中");
+            }else if($(this).text() =="3" || $(this).text() ==3){
+                $(this).text("低");
+            }
+        });
+        $("[data-field='vuln_status']").children().each(function(){
+            if ($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("确认漏洞");
+            }else if($(this).text() =="2" || $(this).text() ==2){
+                $(this).text("误报");
+            }else if($(this).text() =="3" || $(this).text() ==3){
+                $(this).text("已修复");
+            }else if($(this).text() =="4" || $(this).text() ==4){
+                $(this).text("待确认");
+            }
+        });
+        $("[data-field='is_retest']").children().each(function(){
+            if ($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("是");
+            }else if($(this).text() =="2" || $(this).text() ==2){
+                $(this).text("否");
+            }
+        });
+      }
+  });
+   $("#vuln_cancel").click(function (){
+        $("#vuln").css("display","none");
+    });
+   $("#vuln_confirm").click(function (){
+       var vuln_name =$("#vuln_name").val();
+       var vuln_level =$("#vuln_level").val();
+       var vuln_affect =$("#vuln_affect").val();
+       var vuln_status =$("#vuln_status").val();
+       var is_retest =$("#is_retest").val();
+       var vuln_desc =$("#vuln_desc").val();
+       var vuln_details = $("#vuln_details").val();
+       var project_name = $("#vuln_project_name").val();
+       $.ajax({
+           type:"POST",
+           url:"/vuln/",
+           data:{
+               "vuln_name":vuln_name,
+               "vuln_level":vuln_level,
+               "vuln_affect":vuln_affect,
+               "vuln_status":vuln_status,
+               "is_retest":is_retest,
+               "vuln_desc":vuln_desc,
+               "vuln_details":vuln_details,
+               "user_id":user_id,
+               "project_name":project_name,
+               "request_type":"modify"
+           },
+           traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+           success:function (data){
+               if(data.code =="0"){
+                   alert("漏洞修改成功");
+                   $("#vuln").css("display","none");
+               }
+           },
+           fail:function (data){
+               var msg = data.msg;
+               alert("漏洞修改失败=="+msg);
+               $("#vuln").css("display","none");
+           }
+       })
+
+   });
+
+   table.on('tool(vuln_info)',function(obj) {
+       var data = obj.data;
+       if (obj.event === "edit") {
+            var vuln_name = data.vuln_name;
+            $("#vuln_name").val(vuln_name);
+            var vuln_level = data.vuln_level;
+            var vuln_temp_level=[1,2,3];
+            var vuln_temp_string =["高","中","低"];
+            var vuln_level_string =""
+            for(var i=0;i<vuln_temp_level.length;i++){
+                if (vuln_level ==vuln_temp_level[i] || vuln_level ==vuln_temp_level[i].toString()){
+                    vuln_level_string+='<option value="'+vuln_temp_level[i]+'" selected >'+vuln_temp_string[i]+'</option>'
+                }else{
+                    vuln_level_string+='<option value="'+vuln_temp_level[i]+'" >'+vuln_temp_string[i]+'</option>'
+                }
+            }
+            $("#vuln_level").html(vuln_level_string);
+            var vuln_affect =data.vuln_affect;
+            $("#vuln_affect").val(vuln_affect);
+            var vuln_status =data.vuln_status;
+            var temp_status =[1,2,3,4]
+            var temp_status_string=["确认漏洞","误报","已修复","待确认"]
+            var vuln_status_string ="";
+            for(var i=0;i<temp_status.length;i++){
+                if (vuln_status ==temp_status[i] || vuln_status ==temp_status[i].toString()){
+                    vuln_status_string+='<option value="'+temp_status[i]+'" selected >'+temp_status_string[i]+'</option>'
+                }else{
+                    vuln_status_string+='<option value="'+temp_status[i]+'" >'+temp_status_string[i]+'</option>'
+                }
+            }
+            $("#vuln_status").html(vuln_status_string);
+            var is_retest =data.is_retest;
+            var is_retest_string =""; //是否复测
+            if (is_retest ==1 || is_retest =="1"){
+                is_retest_string+='<option value="'+1+'" selected >是</option>';
+                is_retest_string+='<option value="'+2+'"  >否</option>';
+            }else if(is_retest ==2 || is_retest =="2"){
+                is_retest_string+='<option value="'+1+'"  >是</option>';
+                is_retest_string+='<option value="'+2+'" selected >否</option>';
+            }
+            $("#is_retest").html(is_retest_string);
+            var vuln_desc = data.vuln_desc;
+            $("#vuln_desc").val(vuln_desc);
+            var vuln_details =data.vuln_details;
+            $("#vuln_details").val(vuln_details);
+            $("#vuln_project_name").val(data.project_name)
+            form.render();
+            $("#vuln").css("display","block");
+
+       }
+   });
+});
+</script>
+<div class="marmo_alert" id="vuln">
+    <div class="marmo_container">
+        <div class="layui-form-item" style="display: none">
+            <label class="layui-form-label">项目名称:</label>
+            <div class="layui-input-block">
+              <input type="text" name="vuln_project_name" id="vuln_project_name" lay-verify="title" autocomplete="off" placeholder="请输入项目名称" class="layui-input" disabled>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">漏洞名称:</label>
+            <div class="layui-input-block">
+              <input type="text" name="vuln_name" id="vuln_name" lay-verify="title" autocomplete="off" placeholder="请输入漏洞名称" class="layui-input" disabled>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">漏洞评级:</label>
+            <div class="layui-input-block">
+              <select lay-filter="aihao" name="vuln_level" id="vuln_level" class="sel_mask">
+
+              </select>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">漏洞影响:</label>
+            <div class="layui-input-block">
+              <input type="text" name="vuln_affect" id="vuln_affect" lay-verify="title" autocomplete="off" placeholder="请输入漏洞影响" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">漏洞状态:</label>
+                <div class="layui-input-block">
+                  <select name="vuln_status" lay-filter="aihao" id="vuln_status" class="sel_mask">
+                    <option value="1">确认漏洞</option>
+                    <option value="2">误报</option>
+                    <option value="3">已修复</option>
+                    <option value="4">待确认</option>
+                  </select>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">是否复测:</label>
+                <div class="layui-input-block">
+                  <select name="is_retest" lay-filter="aihao" id="is_retest" class="sel_mask">
+                    <option value="1">是</option>
+                    <option value="2">否</option>
+                  </select>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">漏洞描述:</label>
+                <div class="layui-input-block">
+                    <textarea placeholder="漏洞描述" class="layui-textarea" name="vuln_desc" id="vuln_desc"></textarea>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">漏洞详情&复现:</label>
+                <div class="layui-input-block">
+                    <textarea placeholder="漏洞详情&复现" class="layui-textarea" name="vuln_details" id="vuln_details"></textarea>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="vuln_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="vuln_cancel">取消</button>
+                </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

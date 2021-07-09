@@ -1,0 +1,44 @@
+{% load static  %}
+<!DOCTYPE HTML>
+<html>
+<head>
+
+    {% block title %}
+        <title>Marmo渗透平台</title>
+    {% endblock %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="keywords" content="Movie_store Responsive web template, Bootstrap Web Templates, Flat Web Templates, Andriod Compatible web template,
+Smartphone Compatible web template, free webdesigns for Nokia, Samsung, LG, SonyErricsson, Motorola web design"/>
+
+    <!-- 引入样式 -->
+
+
+    <link rel="stylesheet" href="{% static '/css/layui.css' %}" media="all" type="text/css">
+
+    <link rel="stylesheet" href="{% static '../css/modules/laydate/default/laydate.css' %}" type="text/css">
+    <link rel="stylesheet" href="{% static '/css/modules/code.css' %}" type="text/css">
+    <!-- 先引入 jquery -->
+    <script type="text/javascript" src="{% static '/js/jquery-1.4.4.min.js' %}"></script>
+{#    <script src="http://libs.baidu.com/jquery/2.1.4/jquery.min.js"></script>#}
+    <script type="text/javascript" src="{% static '/js/layui.js' %}"></script>
+    {% block styles %}
+    {% endblock %}
+
+</head>
+<body class="layui-layout-body">
+<!-- 页面头部 -->
+{% block head %}
+{% endblock %}
+<!-- 页面中部 -->
+{% block body %}
+{% endblock %}
+<!-- 页面底部 -->
+{% block fooder %}
+{% endblock %}
+<!-- 页面引入js -->
+{% block scripts %}
+{% endblock %}
+</body>
+</html>

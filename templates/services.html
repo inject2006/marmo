@@ -1,0 +1,754 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>服务页面</title>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="stylesheet" href='{% static "/css/layui.css"  %}' media="all">
+    <link rel="stylesheet" href={% static  "/css/marmo.css" %}  media="all"/>
+</head>
+<body>
+<script src='{% static "/js/layui.js" %}' charset="utf-8"></script>
+<div class="layui-tab layui-tab-card">
+  <ul class="layui-tab-title">
+    <li class="layui-this" id="not_web_li">非web资产</li>
+    <li id="web_li">web资产</li>
+  </ul>
+  <div class="layui-tab-content" style="height: 100px;">
+    <div class="layui-tab-item layui-show" id="not_web_div">
+        <button type="button" class="layui-btn" id="add_not_web_port_button">新增非web端口</button>
+        <table class="layui-hide" id="not_web" lay-filter="not_web"></table>
+    </div>
+    <div class="layui-tab-item" id="web_div">
+    <button type="button" class="layui-btn" id="add_web_port_button">新增web端口</button>
+    <table class="layui-hide" id="web" lay-filter="web"></table>
+    </div>
+  </div>
+</div>
+<script type="text/html" id="webBar">
+  <a class="layui-btn layui-btn-xs" lay-event="edit">详情&修改</a>
+  <a class="layui-btn layui-btn-xs" lay-event="log_info">log_info</a>
+  <a class="layui-btn layui-btn-xs" lay-event="run">运行</a>
+</script>
+<script type="text/html" id="Bar">
+  <a class="layui-btn layui-btn-xs" lay-event="edit">详情&修改</a>
+  <a class="layui-btn layui-btn-xs" lay-event="log_info">log_info</a>
+  <a class="layui-btn layui-btn-xs" lay-event="web_deep_recognice">web深度识别</a>
+  <a class="layui-btn layui-btn-xs" lay-event="run">运行</a>
+  <a class="layui-btn layui-btn-xs" lay-event="dirbuster">目录爆破</a>
+  <a class="layui-btn layui-btn-xs" lay-event="quick_request">快速访问</a>
+</script>
+<script type="text/html" id="toolbarDemo">
+    <div class="layui-btn-container"></div>
+</script>
+<script>
+    function getCookie(name) {
+        var cookie = document.cookie.match("\\b" + name + "=([^;]*)\\b");
+        return cookie ? cookie[1] : undefined
+    }
+    var project_name="{{ project_name }}";
+    var asset = "{{ asset }}"
+layui.use(['table','form'], function(){
+  var table = layui.table;
+  var $ = layui.jquery;
+  var form =layui.form;
+  table.render({
+    elem: '#not_web'
+    ,defaultToolbar: ['filter','exports','print']
+    ,toolbar:"#toolbarDemo"
+    ,url:'/service/?type=not_web&project_name='+project_name+"&asset="+asset+"&request_type=json"
+    ,cols: [[
+      {field:'id', width:80, title: 'ID', sort: true}
+      ,{field:'port', width:150, title: '端口号'}
+      ,{field:'source', width:150, title: '来源', sort: true}
+      ,{field:'asset', width:250, title: '关联ip'}
+      ,{field:'is_deep_http_recongnize', title: '是否经过深度分析', width: 150}
+      ,{field:'service_name', width:350, title: 'banner探测'}
+      ,{field:'status', width:350, title: '状态'}
+      ,{fixed: 'right', title:'操作', toolbar: '#webBar', width:450}
+    ]]
+    ,page: true,
+      done:function(){
+        $("[data-field='source']").children().each(function(){
+            if ($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("程序添加")
+            }else if($(this).text() =="2" || $(this).text() ==2){
+                $(this).text("人工添加")
+            }
+        });
+        $("[data-field='is_deep_http_recongnize']").children().each(function(){
+            if ($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("是")
+            }else if($(this).text() =="2" || $(this).text() ==2){
+                $(this).text("否")
+            }
+        });
+      }
+  });
+  $("#add_not_web_port_button").click(function (){
+      $("#add_not_web_port_div").val('');
+      $("#add_not_web_source_detail").val('');
+      $("#add_not_web_description").val('');
+      $("#add_not_web_port").css("display","block");
+  });
+  $("#add_not_web_cancel").click(function (){
+      $("#add_not_web_port").css("display","none");
+  });
+  //点击确认
+  $("#add_not_web_confirm").click(function (){
+      var port = $("#add_not_web_port_div").val();
+      var source_detail =$("#add_not_web_source_detail").val();
+      var description = $("#add_not_web_description").val();
+      if (port =="" || port ==null || port==undefined){
+          alert("端口号不能为空");
+          return;
+      }
+      $.ajax({
+          type:"POST",
+          url:"/service/",
+          data:{
+              "type":"add",
+              "web_type":"not_web",
+              "asset":asset,
+              "project_name":project_name,
+              "port":port,
+              "source_detail":source_detail,
+              "description":description
+          },
+           traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+          success:function (data){
+              if (data.code =="0"){
+                  alert("新增非web端口成功");
+                  $("#add_not_web_port").css("display","none");
+                  window.location.reload();
+              }else if(data.code =="-1"){
+                  alert(data.msg);
+                  $("#add_not_web_port").css("display","none");
+              }
+          }
+          ,fail:function (data){
+              alert(data.msg);
+              $("#add_not_web_port").css("display","none");
+          }
+      })
+  });
+  table.on('tool(not_web)',function (obj){
+      var data = obj.data;
+      if (obj.event =="edit"){
+          //非web端口编辑
+          $("#update_port_web_type").val("not_web");
+
+          $("#update_port_port").val(data.port);
+          $("#update_port_id").val(data.id);
+          var source_string =""
+          var source = data.source;
+          if (source =="1" || source ==1){
+              source_string+="<option value='1' selected>程序添加</option><option value='2'>人工添加</option>"
+          }else if (source =="2" || source ==2){
+              source_string+="<option value='1' >程序添加</option><option value='2' selected>人工添加</option>"
+          }
+          $("#update_port_source").html(source_string);
+          $("#update_port_asset_ip").val(data.asset);
+          $("#update_port_banner").val(data.service_name);
+          $("#update_port_description").src =data.screenshot;
+          var is_deep_http_recongnize = data.is_deep_http_recongnize;
+          var recongnize_string =""
+          if (is_deep_http_recongnize ==1 || is_deep_http_recongnize =="1"){
+              recongnize_string +="<option value='1' selected>是</option><option value='2' >否</option>"
+          }else if (is_deep_http_recongnize ==2 || is_deep_http_recongnize =="2"){
+              recongnize_string +="<option value='1' >是</option><option value='2' selected>否</option>"
+          }
+          $("#update_port_is_deep_explain").html(recongnize_string);
+          $("#web_only").css("display","none");
+          $("#update_port_div").css("display","block");
+          form.render();
+      }else if (obj.event =="log_info"){
+          var asset_id =data.id;
+
+          $.ajax({
+                url:"/loginfo?asset_id="+asset_id+"&project_name="+project_name+"&asset_type=3",
+                type:"GET",
+                success:function(data){
+                    if (data.code =="0"){
+                        $("#log_info").val('');
+                        var info = data.info;
+                        var p_string =""
+                        for(var i=0;i<info.length;i++){
+                            p_string+="<p class='log_info_p'>"+info[i]+"</>"
+                        }
+                        console.log(p_string);
+                        $("#log_info").html(p_string);
+                        $("#log_info_alert").css("display","block");
+                    }else if (data.code =="-1"){
+                        alert(data.info)
+                    }
+                }
+          });
+      }else if (obj.event =="run"){
+          var port = data.port;
+          var id = data.id;
+          var ip = data.asset;
+          //var project_name = data.project_name;
+          $.ajax({
+              url:"/run/",
+            type:"POST",
+            traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            data:{
+                  "asset_type":3,"ip_type":"","domain_type":"","domain":"","ip":ip,"asset_id":id,"service":port,"srv_type":3,"project_name":project_name
+            },
+            success:function (data){
+                  if (data.code =="0"){
+                      alert("域名运行按钮调用成功")
+                  }else if(data.code =="-1"){
+                      alert(data.msg);
+                  }
+            },
+              fail:function(data){
+                  alert(data.msg);
+              }
+          })
+
+      }
+
+  });
+});
+</script>
+<!-- web服务的表格 -->
+<script>
+layui.use(['table','form'], function(){
+  var table = layui.table;
+  var $ = layui.jquery;
+  var form = layui.form;
+  table.render({
+    elem: '#web'
+    ,defaultToolbar: ['filter','exports','print']
+    ,toolbar:"#toolbarDemo"
+    ,url:'/service?type=web&project_name='+project_name+"&asset="+asset+"&request_type=json"
+    ,cols: [[
+      {field:'id', width:150, title: 'ID', sort: true}
+      ,{field:'port', width:150, title: '端口号'}
+      ,{field:'source', width:150, title: '来源', sort: true}
+      ,{field:'srv_type', width:150, title: '端口类型'}
+      ,{field:'asset', width:150, title: '关联ip'}
+      ,{field:'is_deep_http_recongnize', title: '是否经过深度分析', width: 150}
+      ,{field:'http_ssl_version', width:250, title: 'SSL版本'}
+      ,{field:'http_resp_body', width:250, title: 'response包'}
+      ,{field:'http_resp_header', width:250, title: '默认header'}
+      ,{field:'screenshot', width:250, title: '网页截图'}
+      ,{field:'status', width:350, title: '状态'}
+      ,{fixed: 'right', title:'操作', toolbar: '#Bar', width:550}
+    ]]
+    ,page: true,
+    done:function() {
+        $("[data-field='source']").children().each(function () {
+            if ($(this).text() == "1" || $(this).text() == 1) {
+                $(this).text("程序添加")
+            } else if ($(this).text() == "2" || $(this).text() == 2) {
+                $(this).text("人工添加")
+            }
+        });
+        $("[data-field='is_deep_http_recongnize']").children().each(function () {
+            if ($(this).text() == "1" || $(this).text() == 1) {
+                $(this).text("是")
+            } else if ($(this).text() == "2" || $(this).text() == 2) {
+                $(this).text("否")
+            }
+        });
+        $("[data-field='srv_type']").children().each(function () {
+            if ($(this).text() == "1" || $(this).text() == 1) {
+                $(this).text("http")
+            } else if ($(this).text() == "2" || $(this).text() == 2) {
+                $(this).text("https")
+            }
+            else if ($(this).text() == "9" || $(this).text() == 9) {
+                $(this).text("other")
+            }
+            else if ($(this).text() == "0" || $(this).text() == 0) {
+                $(this).text("未知")
+            }
+        });
+
+    }
+  });
+  $("#add_web_port_button").click(function (){
+      $("#add_web_port").css("display","block");
+      $("#add_web_port_div").val('');
+      $("#add_web_source_detail").val('');
+      $("#add_web_description").val('');
+
+  });
+  $("#add_web_cancel").click(function (){
+      $("#add_web_port").css("display","none");
+  });
+  //点击确认
+  $("#add_web_confirm").click(function (){
+      var port = $("#add_web_port_div").val();
+      var source_detail =$("#add_web_source_detail").val();
+      var description = $("#add_web_description").val();
+      if (port =="" || port ==null || port==undefined){
+          alert("端口号不能为空");
+          return;
+      }
+      $.ajax({
+          type:"POST",
+          url:"/service/",
+          data:{
+              "type":"add",
+              "web_type":"web",
+              "asset":asset,
+              "project_name":project_name,
+              "port":port,
+              "source_detail":source_detail,
+              "description":description
+          },
+           traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+          success:function (data){
+              if (data.code =="0"){
+                  alert("新增web端口成功");
+                  $("#add_web_port").css("display","none");
+                  window.location.reload();
+              }else if(data.code =="-1"){
+                  alert(data.msg);
+                  $("#add_web_port").css("display","none");
+              }
+          }
+          ,fail:function (data){
+              alert(data.msg);
+              $("#add_web_port").css("display","none");
+          }
+      })
+  });
+  table.on('tool(web)',function (obj){
+      var data = obj.data;
+      if (obj.event =="edit"){
+          //非web端口编辑
+          $("#update_port_port").val(data.port);
+          $("#update_port_web_type").val("web");
+          $("#update_port_id").val(data.id);
+          var source_string =""
+          var source = data.source;
+          if (source =="1" || source ==1){
+              source_string+="<option value='1' selected>人工添加</option><option value='2'>程序添加</option>"
+          }else if (source =="2" || source ==2){
+              source_string+="<option value='1' >人工添加</option><option value='2' selected>程序添加</option>"
+          }
+          $("#update_port_source").html(source_string);
+          $("#update_port_asset_ip").val(data.asset);
+          $("#update_port_banner").val(data.service_name);
+          $("#update_port_description").val(data.description);
+          var is_deep_http_recongnize = data.is_deep_http_recongnize;
+          var recongnize_string =""
+          if (is_deep_http_recongnize ==1 || is_deep_http_recongnize =="1"){
+              recongnize_string +="<option value='1' selected>是</option><option value='2' >否</option>"
+          }else if (is_deep_http_recongnize ==2 || is_deep_http_recongnize =="2"){
+              recongnize_string +="<option value='1' >是</option><option value='2' selected>否</option>"
+          }
+          $("#update_port_is_deep_explain").html(recongnize_string);
+          //web部分添加
+          $("#update_port_ssl_version").val(data.http_ssl_version);
+          $("#update_port_response").val(data.http_resp_body);
+          $("#update_port_header").val(data.http_resp_header);
+          $("#update_port_screenshot").val(data.screenshot);
+
+          $("#web_only").css("display","block");
+          $("#update_port_div").css("display","block");
+          form.render();
+      }else if (obj.event =="log_info"){
+          var asset_id =data.id;
+
+          $.ajax({
+                url:"/loginfo?asset_type=3&asset_id="+asset_id+"&project_name="+project_name,
+                type:"GET",
+                success:function(data){
+                    if (data.code =="0"){
+                        $("#log_info").val('');
+                        var info = data.info;
+                        var p_string =""
+                        for(var i=0;i<info.length;i++){
+                            p_string+="<p class='log_info_p'>"+info[i]+"</>"
+                        }
+                        console.log(p_string);
+                        $("#log_info").html(p_string);
+                        $("#log_info_alert").css("display","block");
+                    }else if (data.code =="-1"){
+                        alert(data.info)
+                    }
+                }
+          });
+      }else if (obj.event =="run"){
+          var service = data.port;
+          var ip = data.asset;
+          var id = data.id;
+          var srv_type =data.srv_type
+          //var project_name = data.project_name;
+          $.ajax({
+              url:"/run/",
+            type:"POST",
+            traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            data:{
+                  "asset_type":3,"ip_type":"","domain_type":"","domain":"","ip":ip,"asset_id":id,"service":service,"srv_type":srv_type,"project_name":project_name
+            },
+            success:function (data){
+                  if (data.code =="0"){
+                      alert("域名运行按钮调用成功")
+                  }else if(data.code =="-1"){
+                      alert(data.msg);
+                  }
+            },
+              fail:function(data){
+                  alert(data.msg);
+              }
+          })
+      }else if (obj.event =="dirbuster"){
+          console.log("进行目录爆破");
+          var ip = data.asset;
+          var id = data.id
+          //点击旁站按钮
+          $.ajax({
+                type:"POST",
+                url:"/dirbuster/",
+                traditional: true,
+                async: false,
+                headers:{
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                data:{
+                    "project_name":project_name,
+                    "asset_id":id,
+                    "asset":ip
+                },
+                success:function (data){
+                    if (data.code =="0"){
+                        var user_data = data.data
+                        var tbody_string =""
+                        for (var i=0;i<user_data.length;i++){
+                            var one_data = user_data[i];
+                            if (one_data){
+                                //var data_json = JSON.parse(one_data);
+                                //for (var y=0;y<data_json.length;y++){#}
+                                    //var inner_data = data_json[y]
+                                    //console.log(inner_data)
+                                    var url =one_data["url"];
+                                    var temp_url = "";
+                                    if (url !="" && url !=undefined && url !=null){
+                                        temp_url =  decodeURIComponent(url);
+                                    }
+                                    var format_string ='<tr><td><a href="'+temp_url+'" target="_blank">'+temp_url+'</a> </td><td>'+one_data["status"]+'</td><td>'+one_data["content_length"]+'</td></tr>'
+                                    tbody_string+=format_string;
+
+                            }
+
+
+                        }
+                        $("#dirbuster_tbody").append(tbody_string);
+                        $("#dirbuster_alert").css("display","block");
+
+                    }else if (data.code =="-1"){
+                        alert(data.msg);
+                    }
+                }
+            });
+
+      }else if (obj.event =="quick_request"){
+            var port =data.port;
+            var http_type=""
+            var srv_type = data.srv_type;
+            var asset = data.asset;
+            if (srv_type =="1"){
+                http_type="http"
+            }else if (srv_type =="2"){
+                http_type="https"
+            }
+            url =http_type+"://"+asset+":"+port;
+            window.open(url);
+      }else if (obj.event =="web_deep_recognice"){
+          //web深度识别
+          window.parent.create_tabs("web深度识别","{{ path }}/recongnize?type=html&project_name={{ project_name }}&asset={{ asset }}",7);
+
+      }
+
+  });
+  $("#update_port_cancel").click(function (){
+        $("#update_port_div").css("display","none");
+  });
+  $("#log_info_cancel").click(function (){
+      $("#log_info_alert").css("display","none");
+  });
+  $("#dirbuster_cancel").click(function (){
+      $("#dirbuster_alert").css("display","none");
+  });
+  $("#update_port_confirm").click(function (){
+      var web_type = $("#update_port_web_type").val();
+      var port = $("#update_port_port").val();
+      var source = $("#update_port_source").val();
+      var asset_ip = $("#update_port_asset_ip").val();
+      var banner = $("#update_port_banner").val();
+      var is_deep_recongnize = $("#update_port_is_deep_explain").val();
+      var description =$("#update_port_description").val();
+      var asset_id = $("#update_port_id").val();
+      var update_port_params ={
+          "port":port,
+          "source":source,
+          "asset_ip":asset_ip,
+          "banner":banner,
+          "is_deep_recongnize":is_deep_recongnize,
+          "web_type":web_type,
+          "type":"modify",
+          "description":description,
+          "asset_id":asset_id
+      }
+      if (web_type =="web"){
+            update_port_params["ssl_version"]=$("#update_port_ssl_version").val();
+            update_port_params["response"]=$("#update_port_response").val();
+            update_port_params["header"]=$("#update_port_header").val();
+            update_port_params["screenshot"]=$("#update_port_screenshot").val();
+      }
+      $.ajax({
+          type:"POST",
+          url:"/service/",
+          data:update_port_params,
+          traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+          success:function (data){
+              if (data.code =="0"){
+                  alert("修改端口成功");
+                  $("#update_port_div").css("display","none");
+                  window.location.reload();
+              }else if (data.code =="-1"){
+                  alert(data.msg);
+                  $("#update_port_div").css("display","none");
+              }
+          },
+          fail:function(data){
+              alert(data.msg);
+              $("#update_port_div").css("display","none");
+          }
+
+      })
+
+  });
+});
+</script>
+<!-- 新增web端口-->
+<div class="marmo_alert" id="add_not_web_port">
+    <div class="marmo_container">
+        <div class="layui-form-item">
+            <label class="layui-form-label">新增端口:</label>
+            <div class="layui-input-block">
+              <input type="text" name="add_not_web_port_div" id="add_not_web_port_div" lay-verify="title" autocomplete="off" placeholder="请输入端口号" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">来源详情:</label>
+            <div class="layui-input-block">
+              <textarea placeholder="请输入来源详情" class="layui-textarea" name="add_not_web_source_detail" id="add_not_web_source_detail"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注:</label>
+            <div class="layui-input-block">
+              <textarea placeholder="请输入备注信息" class="layui-textarea" name="add_not_web_description" id="add_not_web_description"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_not_web_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_not_web_cancel">取消</button>
+                </div>
+        </div>
+
+    </div>
+</div>
+<!--
+ 新增非web端口
+ -->
+<!-- 新增web端口-->
+<div class="marmo_alert" id="add_web_port">
+    <div class="marmo_container">
+        <div class="layui-form-item">
+            <label class="layui-form-label">新增web端口:</label>
+            <div class="layui-input-block">
+              <input type="text" name="add_web_port_div" id="add_web_port_div" lay-verify="title" autocomplete="off" placeholder="请输入端口号" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">来源详情:</label>
+            <div class="layui-input-block">
+              <textarea placeholder="请输入来源详情" class="layui-textarea" name="add_web_source_detail" id="add_web_source_detail"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注:</label>
+            <div class="layui-input-block">
+              <textarea placeholder="请输入备注信息" class="layui-textarea" name="add_web_description" id="add_web_description"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_web_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="add_web_cancel">取消</button>
+                </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="marmo_alert" id="update_port_div">
+    <div class="marmo_container">
+        <div class="layui-form-item" style="display: none">
+            <label class="layui-form-label">类型:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_port_id" id="update_port_id" lay-verify="title" autocomplete="off"  class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item" style="display: none">
+            <label class="layui-form-label">类型:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_port_web_type" id="update_port_web_type" lay-verify="title" autocomplete="off"  class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">端口号:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_port_port" id="update_port_port" lay-verify="title" autocomplete="off" placeholder="请输入端口号" class="layui-input" disabled>
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">来源:</label>
+                <div class="layui-input-block">
+                  <select name="update_port_source" id="update_port_source" lay-filter="aihao" class="sel_mask">
+                  </select>
+                </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">关联ip:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_port_asset_ip" id="update_port_asset_ip" lay-verify="title" autocomplete="off" placeholder="请输入关联ip" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">banner信息:</label>
+            <div class="layui-input-block">
+              <input type="text" name="update_port_banner" id="update_port_banner" lay-verify="title" autocomplete="off" placeholder="请输入banner信息" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">是否经过深度分析:</label>
+                <div class="layui-input-block">
+                  <select name="update_port_is_deep_explain" id="update_port_is_deep_explain" lay-filter="aihao" class="sel_mask">
+                  </select>
+                </div>
+        </div>
+        <!-- web 独有的-->
+        <div id="web_only"  style="display: none">
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">SSL版本信息:</label>
+                        <div class="layui-input-block">
+                          <textarea placeholder="SSL版本信息" class="layui-textarea" name="update_port_ssl_version" id="update_port_ssl_version"></textarea>
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">默认页面的response包:</label>
+                        <div class="layui-input-block">
+                          <textarea placeholder="默认页面的response包" class="layui-textarea" name="update_port_response" id="update_port_response"></textarea>
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">默认页面返回的header:</label>
+                        <div class="layui-input-block">
+                          <textarea placeholder="默认页面返回的header" class="layui-textarea" name="update_port_header" id="update_port_header"></textarea>
+                        </div>
+                    </div>
+                    <div class="layui-form-item">
+                        <label class="layui-form-label">网页截图:</label>
+                        <div class="layui-input-block">
+                          <img src="" name="update_port_screenshot" id="update_port_screenshot"/>
+                        </div>
+                    </div>
+                    <!-- web独有的 end -->
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">备注:</label>
+            <div class="layui-input-block">
+              <textarea placeholder="请输入备注信息" class="layui-textarea" name="update_port_description" id="update_port_description"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="update_port_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="update_port_cancel">取消</button>
+                </div>
+        </div>
+    </div>
+</div>
+<!--  显示loginfo-->
+<div class="marmo_alert" id="log_info_alert">
+    <div class="marmo_container">
+        <div class="layui-form-item" style="height: 100%">
+                <div class="layui-input-block" style="height: 100%;background-color: #fff" id="log_info">
+{#                  <textarea id="log_info" lay-verify="title" autocomplete="off"  class="layui-input" style="height: 100%"></textarea>#}
+                </div>
+            </div>
+        <div class="layui-form-item">
+                    <div class="layui-input-block">
+                      <button type="button" class="log_info_cancel" id="log_info_cancel">取消</button>
+                    </div>
+        </div>
+    </div>
+
+</div>
+<!-- 显示目录爆破 -->
+<div class="marmo_alert" id="dirbuster_alert">
+    <div class="marmo_container">
+        <table class="layui-table">
+          <colgroup>
+            <col width="550">
+            <col width="150">
+            <col width="150">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>url</th>
+              <th>status</th>
+              <th>content_length</th>
+            </tr>
+          </thead>
+          <tbody id="dirbuster_tbody">
+
+          </tbody>
+        </table>
+        <div class="layui-form-item">
+                    <div class="layui-input-block">
+                      <button type="button" class="layui-btn layui-btn-normal" id="dirbuster_cancel">取消</button>
+                    </div>
+        </div>
+    </div>
+
+</div>
+
+
+
+
+

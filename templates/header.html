@@ -1,0 +1,37 @@
+<div class="layui-header">
+            <div class="layui-logo">Marmo渗透平台</div>
+            <!-- hearder左边菜单 -->
+            <ul class="layui-nav layui-layout-left" lay-filter="t_leftmenu">
+                <li class="layui-nav-item layui-this"><a href="">
+                    {% for home in homepage %}
+                        {{ home.name }}
+                    {% endfor %}
+                </a></li>
+            </ul>
+            <ul class="layui-nav layui-layout-right" lay-filter="t_rightmenu">
+                <li class="layui-nav-item" style="top: 0px;">
+                    <div id="test-all" class="layui-inline">
+                        <div class="layui-unselect layui-colorpicker">
+                            <span class="layui-colorpicker-trigger-bgcolor">
+                                <span class="layui-colorpicker-trigger-span" lay-type="rgba"
+                                      style="background:
+                                              {% if  user_item.0.theme %}{{ user_item.0.theme }};{% else %}#009688;{% endif %}">
+                                    <i class="layui-icon layui-colorpicker-trigger-i layui-icon-down"></i>
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                </li>
+                <li class="layui-nav-item">
+                    <a href="#">
+                        <img src="media/{{ user.img_url }}" class="layui-nav-img">
+                        {{ user.name }}
+                    </a>
+                    <dl class="layui-nav-child">
+                        <dd><a href="#" id="my_info">个人信息</a></dd>
+                    </dl>
+                </li>
+                <!-- 退出 -->
+                <li class="layui-nav-item"><a href="{{ path }}/quit">退出登录</a></li>
+            </ul>
+        </div>

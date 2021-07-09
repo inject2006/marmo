@@ -1,0 +1,212 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>渗透信息管理</title>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="stylesheet" href='{% static "/css/layui.css" %}'  media="all"/>
+    <link rel="stylesheet" href={% static  "/css/marmo.css" %}  media="all"/>
+</head>
+<body>
+
+<table class="layui-hide" id="process_info" lay-filter="process_info"></table>
+<script type="text/html" id="barDemo">
+  <a class="layui-btn layui-btn-xs" lay-event="edit">查看&修改</a>
+</script>
+<script type="text/html" id="toolbarDemo">
+    <div class="layui-btn-container"></div>
+</script>
+<script src='{% static "/js/layui.js" %}' charset="utf-8"></script>
+
+<script>
+    function getCookie(name) {
+        var cookie = document.cookie.match("\\b" + name + "=([^;]*)\\b");
+        return cookie ? cookie[1] : undefined
+    };
+    var user_id = {{ request.session.user_id }};
+    var project_name ="{{ project_name }}";
+    var asset="{{ asset }}";
+layui.use(['table','form'], function(){
+  var table = layui.table;
+  var $ = layui.jquery;
+  var form = layui.form;
+  table.render({
+    elem: '#process_info'
+    ,defaultToolbar: ['filter','exports','print']
+    ,toolbar:"#toolbarDemo"
+    ,url:'/process?type=json&user_id='+user_id+"&project_name="+project_name+"&asset="+asset
+    ,cols: [[
+      {field:'id', width:150, title: 'ID', sort: true}
+      ,{field:'asset', width:250, title: '关联资产'}
+      ,{field:'create_time', width:250, title: '创建时间', sort: true}
+      ,{field:'create_user', width:250, title: '创建人'}
+      ,{field:'info_content', title: '渗透信息', width: 450}
+      ,{field:'info_level', width:150, title: '信息重要性', sort: true}
+      ,{field:'step', width:350, title: '流转记录', sort: true}
+      ,{field:'info_status', width:150, title: '信息状态'}
+      ,{field:'responser', width:150, title: '负责人',hide:true}
+      ,{fixed: 'right', title:'操作', toolbar: '#barDemo', width:150}
+    ]]
+    ,page: true
+      ,done:function(res,curr,count){
+        $("[data-field='info_level']").children().each(function(){
+            if ($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("低");
+            }else if($(this).text() =="2" || $(this).text() ==2){
+                $(this).text("中");
+            }else if($(this).text() =="3" || $(this).text() ==3){
+                $(this).text("高");
+            }
+        });
+        $("[data-field='info_status']").children().each(function(){
+            if ($(this).text() =="1" || $(this).text() ==1){
+                $(this).text("信息");
+            }else if($(this).text() =="2" || $(this).text() ==2){
+                $(this).text("待解决");
+            }else if($(this).text() =="3" || $(this).text() ==3){
+                $(this).text("已解决");
+            }
+        });
+      }
+  });
+  table.on('tool(process_info)',function(obj){
+    var data = obj.data;
+    if (obj.event ==="edit"){
+        var responser = data.responser;
+        var info_status =data.info_status;
+        if(info_status ==1 || info_status=="1"){
+            $("#info_status").html('<option value="1" selected>信息</option><option value="2" >待解决</option><option value="3" >已解决</option>');
+        }else if(info_status ==2 || info_status =="2"){
+            $("#info_status").html('<option value="1" >信息</option><option value="2" selected >待解决</option><option value="3" >已解决</option>');
+        }else if(info_status ==3 || info_status =="3"){
+            $("#info_status").html('<option value="1" >信息</option><option value="2" >待解决</option><option value="3" selected>已解决</option>');
+        }
+
+        var info_content =data.info_content;
+        $("#info_content").val(info_content);
+        var process_info_id =data.id;
+        $("#process_info_project_id").val(project_name);
+        $("#process_info_id").val(process_info_id);
+
+        //获取所有的用户
+            $.ajax({
+                type:"GET",
+                url:"/user/?type=user&page=1",
+                success:function (data){
+                    if (data.code =="0"){
+                        var user_data = data.data
+                        var user_string =""
+                        for(var i=0;i<user_data.length;i++){
+                            var one_user =user_data[i];
+                            var one_user_id = one_user.id;
+                            if (responser ==one_user_id){
+                                user_string+='<option value="'+one_user_id+'" selected>'+one_user.name+'</option>'
+                            }else{
+                                user_string+='<option value="'+one_user_id+'">'+one_user.name+'</option>'
+                            }
+
+                        }
+                        $("#process_user").html(user_string)
+                        form.render();
+                    }
+                }
+            })
+        $("#process_info_alert").css("display","block");
+
+    }
+});
+  $("#process_info_cancel").click(function (){
+      $("#process_info_alert").css("display","none");
+  });
+  $("#process_info_confirm").click(function (){
+      var project_name = $("#process_info_project_id").val();
+      var process_info_id=$("#process_info_id").val();
+      var process_user =$("#process_user").val();
+      var info_status=$("#info_status").val();
+      var info_content =$("#info_content").val();
+      $.ajax({
+          url:"/process/",
+          type:"POST",
+          data:{
+              user_id:user_id,
+              project_name:project_name,
+              prcess_info_id:process_info_id,
+              process_user:process_user,
+              info_status:info_status,
+              info_content:info_content,
+              request_type:"modify"
+          },
+          traditional: true,
+            async: false,
+            headers:{
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+          success:function (data){
+              if (data.code =="0"){
+                  alert("修改渗透任务成功");
+                  $("#process_info_alert").css("display","none");
+                  window.location.reload();
+              }else{
+                  alert(data.msg);
+                  $("#process_info_alert").css("display","none");
+              }
+          }
+          ,fail:function (data){
+              alert(data.msg);
+                  $("#process_info_alert").css("display","none");
+          }
+      })
+  });
+});
+
+</script>
+
+<div class="marmo_alert" id="process_info_alert">
+    <div class="marmo_container">
+        <div class="layui-form-item" style="display: none">
+                <label class="layui-form-label">关联项目:</label>
+                <div class="layui-input-block">
+                        <input type="text" name="process_info_project_id" id="process_info_project_id" lay-verify="title" autocomplete="off"  class="layui-input">
+                </div>
+        </div>
+        <div class="layui-form-item" style="display: none">
+                <label class="layui-form-label">渗透信息id:</label>
+                <div class="layui-input-block">
+                    <input type="text" name="process_info_id" id="process_info_id" lay-verify="title" autocomplete="off"  class="layui-input">
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">关联人:</label>
+                <div class="layui-input-block">
+                  <select name="process_user" id="process_user" lay-filter="aihao" class="sel_mask">
+
+                  </select>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">信息状态:</label>
+                <div class="layui-input-block">
+                  <select name="info_status" id="info_status" lay-filter="aihao" class="sel_mask">
+                  </select>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <label class="layui-form-label">渗透信息:</label>
+                <div class="layui-input-block">
+                    <textarea placeholder="漏洞描述" class="layui-textarea" name="info_content" id="info_content"></textarea>
+                </div>
+        </div>
+        <div class="layui-form-item">
+                <div class="layui-input-block">
+                  <button type="button" class="layui-btn layui-btn-normal" id="process_info_confirm">确认</button>
+                  <button type="button" class="layui-btn layui-btn-normal" id="process_info_cancel">取消</button>
+                </div>
+              </div>
+    </div>
+</div>
+
+</body>
+</html>
